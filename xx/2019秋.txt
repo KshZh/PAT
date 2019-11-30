@@ -1,0 +1,292 @@
+## 7-1 Forever (20 分)
+
+1. dfs+剪支。
+
+```cpp
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+int N, K, m;
+
+int getSum(int A) {
+    int s = 0;
+    while (A) {
+        s += A%10;
+        A /= 10;
+    }
+    return s;
+}
+
+int gcd(int a, int b) {
+    return b==0? a: gcd(b, a%b);
+}
+
+bool isPrime(int a) {
+    if (a <= 1)
+        return false;
+    int s = sqrt(a);
+    for (int i=2; i<=s; i++) { // 注意可以等于s。
+        if (a%i == 0)
+            return false;
+    }
+    return true;
+}
+
+bool cmp(const pair<int, int>& a, const pair<int, int>& b) {
+    if (a.first != b.first) return a.first<b.first;
+    return a.second<b.second;
+}
+
+vector<pair<int, int>> v;
+
+void dfs(int sum, int val, int depth) {
+    if (depth>K)
+        return;
+    if (depth == K) {
+        if (sum == m) {
+            int n = getSum(val+1);
+            int g = gcd(m, n);
+            if (g>2 && isPrime(g)) {
+                v.push_back(pair<int, int>(n, val));
+            }
+        }
+    } else {
+        for (int i=0; i<=9; i++)
+            if (sum+i<=m && sum+i+(K-depth-1)*9>=m) // 第二个剪支是最关键的，如果后面剩余的位数全部取9，位数和都无法大于等于m，那么这一分支就可以直接剪掉。
+                dfs(sum+i, val*10+i, depth+1);
+    }
+}
+
+int main() {
+    int i, j, end_, n;
+    scanf("%d", &N);
+    for (i=1; i<=N; i++) {
+        scanf("%d %d", &K, &m);
+        /*
+        end_ = pow(10, K);
+        for (j=pow(10, K-1); j<end_; j++) {
+            if (sum(j)==m) {
+                n = sum(j+1);
+                if (isPrime(gcd(m, n))) {
+                    v.push_back(pair<int, int>(n, j));
+                }
+            }
+        }
+        */
+        for (j=1; j<=9; j++) {
+            dfs(j, j, 1);
+        }
+        sort(v.begin(), v.end(), cmp);
+        printf("Case %d\n", i);
+        if (v.empty())
+            printf("No Solution\n");
+        else {
+            for (auto& p: v) {
+                printf("%d %d\n", p.first, p.second);
+            }
+        }
+        v.clear();
+    }
+}
+```
+
+
+## 7-2 Merging Linked Lists (25 分)
+
+1. 注意考虑边界情况。
+
+```cpp
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <algorithm>
+#include <unordered_map>
+using namespace std;
+
+struct Node {
+    int addr, data, next;
+    Node(int a, int d, int n): addr(a), data(d), next(n) {}
+    Node() = default;
+};
+
+int N, head1, head2;
+
+unordered_map<int, Node> m;
+
+vector<Node> list1, list2;
+
+int main() {
+    int i, j, addr, data, next_;
+    scanf("%d %d %d", &head1, &head2, &N);
+    for (i=0; i<N; i++) {
+        scanf("%d %d %d", &addr, &data, &next_);
+        m[addr] = Node(addr, data, next_);
+    }
+    int p = head1;
+    while (p != -1) {
+        list1.push_back(m[p]);
+        p = m[p].next;
+    }
+    p = head2;
+    while (p != -1) {
+        list2.push_back(m[p]);
+        p = m[p].next;
+    }
+    if (list1.size() < list2.size()) {
+        swap(list1, list2);
+    }
+    auto& long_ = list1;
+    auto& short_ = list2;
+    reverse(short_.begin(), short_.end());
+    bool nextShort = false;
+    for (i=j=0; i<long_.size() || nextShort; ) { // 边界2，long_结束了，但short_还剩一个。
+        if (nextShort) {
+			// 边界2，long_结束了，但short_还剩一个。
+            if (i<long_.size())
+                printf("%05d %d %05d\n", short_[j].addr, short_[j].data, long_[i].addr);
+            else
+                printf("%05d %d -1\n", short_[j].addr, short_[j].data);
+            nextShort = false;
+            j++;
+            continue;
+        }
+		// 边界3，short_先结束了。
+        if (i%2 == 1 && j<short_.size()) {
+            printf("%05d %d %05d\n", long_[i].addr, long_[i].data, short_[j].addr);
+            i++;
+            nextShort = true;
+            continue;
+        }
+		// 边界1，以long_的最后一个结点结尾。
+        if (i+1<long_.size())
+            printf("%05d %d %05d\n", long_[i].addr, long_[i].data, long_[i+1].addr);
+        else
+            printf("%05d %d -1\n", long_[i].addr, long_[i].data);
+        i++;
+    }
+}
+```
+
+
+## 7-3 Postfix Expression (25 分)
+
+```cpp
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <algorithm>
+#include <unordered_map>
+using namespace std;
+
+int N, gRoot;
+
+struct Node {
+    string data;
+    int left, right;
+};
+
+vector<Node> v;
+
+vector<bool> checked;
+
+void post(int root) {
+    if (root == -1)
+        return;
+    printf("(");
+    if (v[root].left == -1) {
+        printf("%s", v[root].data.c_str());
+        post(v[root].right);
+    } else {
+        post(v[root].left);
+        post(v[root].right);
+        printf("%s", v[root].data.c_str());
+    }
+    printf(")");
+}
+
+int main() {
+    int i;
+    cin >> N;
+    checked.resize(N+1);
+    v.resize(N+1);
+    for (i=1; i<=N; i++) {
+        cin >> v[i].data >> v[i].left >> v[i].right;
+        if (v[i].left != -1)
+            checked[v[i].left] = true;
+        if (v[i].right != -1)
+            checked[v[i].right] = true;
+    }
+    for (i=1; i<=N && checked[i]; i++)
+        ;
+    gRoot = i; // 没有边指向结点i，故结点i是根。
+    post(i);
+}
+```
+
+
+## 7-4 Dijkstra Sequence (30 分)
+
+```cpp
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <algorithm>
+#include <unordered_map>
+#include <climits>
+using namespace std;
+
+// 编号从1开始。
+int edge[1001][1001];
+int seq[1001];
+
+int visited[1001];
+int dis[1001];
+
+int Nv, Ne, K;
+
+bool dijkstra() {
+    int min_, v, i, j;
+    dis[seq[1]] = 0;
+    for (i=1; i<=Nv; i++) {
+        min_ = INT_MAX;
+        for (j=1; j<=Nv; j++) {
+            if (!visited[j] && dis[j]<min_) {
+                min_ = dis[j];
+                v = j;
+            }
+        }
+        if (min_ != dis[seq[i]]) { // 不能用v!=i，因为可能有多个dis[j]是相等的。
+            return false;
+        }
+        visited[v] = true;
+        for (j=1; j<=Nv; j++) {
+            if (!visited[j] && edge[v][j]) {
+                if (dis[v]+edge[v][j] < dis[j])
+                    dis[j] = dis[v]+edge[v][j];
+            }
+        }
+    }
+    return true;
+}
+
+int main() {
+    int i, u, v, w;
+    scanf("%d %d", &Nv, &Ne);
+    while (Ne--) {
+        scanf("%d %d %d", &u, &v, &w);
+        edge[u][v] = edge[v][u] = w;
+    }
+    scanf("%d", &K);
+    while (K--) {
+        for (i=1; i<=Nv; i++)
+            scanf("%d", seq+i);
+        fill(dis+1, dis+Nv+1, INT_MAX);
+        if (dijkstra()) printf("Yes\n");
+        else printf("No\n");
+        fill(visited+1, visited+Nv+1, false);
+    }
+}
+```
