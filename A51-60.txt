@@ -1,0 +1,661 @@
+## 1051 Pop Sequence (25 分)
+
+1. Given a stack which can keep M numbers at most. Push N numbers in the order of 1, 2, 3, ..., N and pop randomly. You are supposed to tell if a given sequence of numbers is a possible pop sequence of the stack. For example, if M is 5 and N is 7, we can obtain 1, 2, 3, 4, 5, 6, 7 from the stack, but not 3, 2, 1, 7, 5, 6, 4.
+2. 用栈模拟。
+
+```cpp
+#include <iostream>
+#include <stack>
+using namespace std;
+
+int M, N, K, i, j, k, x, max_, flag;
+
+stack<int> s;
+
+int main() {
+    scanf("%d %d %d", &M, &N, &K);
+    for (i=0; i<K; i++) {
+        max_ = 1;
+        flag = true;
+        for (j=0; j<N; j++) {
+            scanf("%d", &x);
+            if (!s.empty() && s.top()==x) {
+                s.pop();
+                continue;
+            }
+			// 否则，我们需要先将[max_, x]顺序入栈，再将x出栈，这里优化了将x出栈，直接不将x入栈。
+            if (x < max_) {
+				// 小于max_的数已经在栈中，或被推入栈中后已经被弹出了。
+                flag = false;
+                // break; // XXX 注意不能break，而要继续循环接受完输入。也可以先存储输入，再一起处理。
+            }
+            for (k=max_; k<x; k++)
+                s.push(k);
+            if (s.size()+1 > M) { // 注意要加1，因为我们省略了将x入栈的步骤。
+                flag = false;
+                // break; 
+            }
+            if (x+1 > max_)
+                max_ = x+1;
+        }
+        if (flag)
+            printf("YES\n");
+        else
+            printf("NO\n");
+		// 记得要清空栈，避免影响下次查询。
+        // s.clear();
+        while(!s.empty()) s.pop();
+    }
+}
+```
+
+
+## 1052 Linked List Sorting (25 分)
+
+1. 注意输入的结点不一定在以head为头结点的List中，这些结点是无效的。
+2. 一开始先以addr为下标。
+3. std::sort，cmp函数的定义，首先将有效的结点放前面，无效的结点放后面，然后有效结点和无效结点内部分别按key排序。
+4. 注意，由于结点不是顺序存储，而是按照addr存储，所以要排序整一个list，而不是list+N。
+5. 注意，对于输出格式，输出时，如果地址不足5位，要补0。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+struct Node {
+    int valid;
+    int addr;
+    int key;
+    int next;
+};
+
+int N, i, head, nValid, addr;
+
+// XXX 一开始先以addr为下标。
+Node list[100000]; // .bss，flag默认初始化为零值。
+
+auto cmp = [](const Node& a, const Node& b){ return a.valid!=b.valid? a.valid>b.valid: a.key<b.key; };
+
+int main() {
+    scanf("%d %d", &N, &head);
+    for (i=0; i<N; i++) {
+        scanf("%d", &addr);
+        scanf("%d %d", &list[addr].key, &list[addr].next);
+        list[addr].addr = addr;
+    }
+    while (head != -1) {
+        nValid++;
+        list[head].valid = 1; // 先设置
+        head = list[head].next; // 再移到下一个结点
+    }
+    if (nValid == 0) {
+        printf("0 -1\n");
+        return 0;
+    }
+    sort(list, list+100000, cmp); // XXX 注意，由于结点不是顺序存储，而是按照addr存储，所以要排序整一个list，而不是list+N。
+	for (i=0; i<nValid; i++)
+        list[i].next = list[i+1].addr;
+    printf("%d %05d\n", nValid, list[0].addr);
+    for (i=0; i<nValid-1; i++)
+        printf("%05d %d %05d\n", list[i].addr, list[i].key, list[i+1].addr);
+    printf("%05d %d -1\n", list[i].addr, list[i].key);
+}
+```
+
+
+## 1053 Path of Equal Weight (30 分)
+
+1. 树的遍历，深度优先搜索。
+2. 上一次递归已经用完了，可以简单地覆盖。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <vector>
+using namespace std;
+
+struct Node {
+    int nChilds;
+    int weight;
+    int childs[101];
+};
+
+// 以结点的id作为key。根的id是0。
+// 虽然长度100足够，但是为了避免万一，还是多分配一些空间。
+Node t[101];
+
+int N, M, target, i, j, k;
+
+int prev_[101]; // prev_[i]表示结点i的前驱结点，在树中，也就是父结点。
+
+vector<int> leaves;
+vector<int> path[101]; // 分配尽量多的空间，减少出错概率。
+
+void dfs(int v, int w) {
+    w += t[v].weight;
+
+    if (w > target)
+        return;
+
+    // 从根到达叶子结点的路径，且路径上的点权和为target。
+    if (t[v].nChilds==0 && w==target) {
+        leaves.push_back(v);
+        return;
+    }
+
+    for (int i=0; i<t[v].nChilds; i++) {
+        prev_[t[v].childs[i]] = v;
+        dfs(t[v].childs[i], w);
+    }
+}
+
+void dfs(int v) {
+    if (prev_[v] != 0)
+        dfs(prev_[v]);
+    path[i].push_back(t[prev_[v]].weight);
+}
+
+auto cmp = [](const vector<int>& v1, const vector<int>& v2){
+    for (int i=0; i<min(v1.size(), v2.size()); i++)
+        if (v1[i] != v2[i])
+            return v1[i] >= v2[i];
+    return v1.size() > v2.size();
+};
+
+int main() {
+    scanf("%d %d %d", &N, &M, &target);
+    for (i=0; i<N; i++)
+        scanf("%d", &t[i].weight);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &j, &k);
+        t[j].nChilds = k;
+        for (k=0; k<t[j].nChilds; k++)
+            scanf("%d", t[j].childs+k);
+        // 可以在这里就排序，使得dfs时总是先搜索同一层中权比较大的结点，从而顺序产出某个权较大的路径。
+        sort(t[j].childs, t[j].childs+t[j].nChilds, [](int a, int b){ return t[a].weight>t[b].weight; });
+    }
+    // 注意考虑边界情况，如果只有根节点，且其权刚好为target，那么后面的`dfs(leaves[i]);`会使得推入两个0。
+    if (N==1 && t[0].weight==target) {
+        printf("%d\n", target);
+        return 0;
+    }
+    dfs(0, 0);
+    int nPath = leaves.size();
+    for (i=0; i<nPath; i++) {
+        dfs(leaves[i]);
+        path[i].push_back(t[leaves[i]].weight);
+    }
+    // sort(path, path+nPath, cmp);
+    for (i=0; i<nPath; i++) {
+        printf("%d", path[i][0]);
+        for (j=1; j<path[i].size(); j++)
+            printf(" %d", path[i][j]);
+        printf("\n");
+    }
+}
+```
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+struct Node {
+    int nChilds;
+    int weight;
+    int childs[100];
+};
+
+// 以结点的id作为key。根的id是0。
+Node t[100];
+
+int N, M, target, i, j, k;
+
+int path[100];
+
+void dfs(int v, int level, int w) {
+    w += t[v].weight;
+
+    // 从根到达叶子结点的路径，且路径上的点权和为target。
+    if (t[v].nChilds==0 && w==target) {
+        printf("%d", t[0].weight);
+        for (int i=0; i<level; i++)
+            printf(" %d", t[path[i]].weight);
+        printf("\n");
+        return;
+    }
+
+    for (int i=0; i<t[v].nChilds; i++) {
+        path[level] = t[v].childs[i]; // XXX 上一次递归已经用完了，可以简单地覆盖。
+        dfs(t[v].childs[i], level+1, w);
+    }
+}
+
+int main() {
+    scanf("%d %d %d", &N, &M, &target);
+    for (i=0; i<N; i++)
+        scanf("%d", &t[i].weight);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &j, &k);
+        t[j].nChilds = k;
+        for (k=0; k<t[j].nChilds; k++)
+            scanf("%d", t[j].childs+k);
+        // XXX 如果没有想到在这里先排序的话，只能采用第一种写法，即先一次dfs整理出符合条件的叶结点，再dfs整理出完整路径，再排序输出。
+        sort(t[j].childs, t[j].childs+t[j].nChilds, [](int a, int b){ return t[a].weight>t[b].weight; });
+    }
+    dfs(0, 0, 0);
+}
+```
+
+
+## 1054 The Dominant Color (20 分)
+
+```cpp
+#include <iostream>
+#include <map>
+using namespace std;
+
+int N, M, i, j, k;
+
+map<int, int> m;
+
+int main() {
+    scanf("%d %d", &N, &M);
+    for (i=0; i<N; i++) {
+        for (j=0; j<M; j++) {
+            scanf("%d", &k);
+            if (m.find(k) == m.end())
+                m[k] = 0;
+            m[k]++;
+            if (m[k] > M*N/2) {
+                printf("%d\n", k);
+                return 0;
+            }
+        }
+    }
+}
+```
+
+
+## 1055 The World's Richest (25 分)
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+struct Node {
+    char name[9];   // 多一个字节存放'\0'。
+    int age, weight;
+};
+
+Node a[100000];
+
+int N, K, n, min_, max_, i, j, k;
+
+auto cmp = [](const Node&a, const Node& b) {
+    if (a.weight != b.weight)
+        return a.weight>b.weight;
+    else if (a.age != b.age)
+        return a.age < b.age;
+    return strcmp(a.name, b.name)<0;
+};
+
+int main() {
+    scanf("%d %d", &N, &K);
+    for (i=0; i<N; i++)
+        scanf("%s %d %d", a[i].name, &a[i].age, &a[i].weight);
+    sort(a, a+N, cmp);
+    for (i=1; i<=K; i++) {
+        scanf("%d %d %d", &n, &min_, &max_);
+        printf("Case #%d:\n", i);
+        k = n;
+        for (j=0; j<N && n; j++) {
+            if (a[j].age>=min_ && a[j].age<=max_) {
+                printf("%s %d %d\n", a[j].name, a[j].age, a[j].weight);
+                n--;
+            }
+        }
+        if (k == n)
+            printf("None\n");
+    }
+}
+```
+
+
+## 1056 Mice and Rice (25 分)
+
+1. 模拟统计题，值得再看一下。
+2. 看了网上大佬的题解，知道这里有一个性质，即**被淘汰者**的排名是当前层的组数加一，然后可以借助队列来做，在队列非空前持续迭代。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+struct Player {
+    int id;
+    int level;
+    int weight;
+    int rank;
+};
+
+Player players[1000]; // player的id从0开始编号。
+
+int order[1000]; // 值是player的id。
+
+int NP, NG, i, j, k, max_, maxI_, n, level;
+
+int main() {
+    scanf("%d %d", &NP, &NG);
+    for (i=0; i<NP; i++) {
+        scanf("%d", &players[i].weight);
+        players[i].id = i;
+    }
+    for (i=0; i<NP; i++)
+        scanf("%d", order+i);
+    n = NP;
+    if (n == 1) {
+        printf("1\n");
+        return 0;
+    }
+    // 由于使用淘汰制，所以比赛流程图是一层一层的，所以这里逐层处理。
+    for (level=1; level<1000 && n!=1; level++) {
+        k = 0;
+        for (i=0; i<n; i+=NG) {
+            // 考察一组NG个player中的胜者。
+            max_ = -1;
+            for (j=i; j<i+NG && j<n; j++) { // 注意这里的判断`j<i+NG && j<n`，防止数组访问越界。
+                players[order[j]].level = level; // 给在该层比赛的player赋予该层的level，晋级者会在下一个level再被赋予一个更高的level。
+                if (players[order[j]].weight > max_) {
+                    max_ = players[order[j]].weight;
+                    maxI_ = j;
+                }
+            }
+            order[k++] = order[maxI_]; // 晋级的player的id。
+        }
+        n = k; // 新一轮比赛的人数。
+    }
+    players[order[0]].level = level; // 注意这里给最终冠军赋予一个比亚军更高的level。
+    sort(players, players+NP, [](const Player& a, const Player& b){ return a.level>b.level; });
+    players[0].rank = 1;
+    for (i=1; i<NP; i++) {
+        if (players[i].level == players[i-1].level)
+            players[i].rank = players[i-1].rank;
+        else
+            players[i].rank = i+1;
+    }
+    sort(players, players+NP, [](const Player& a, const Player& b){ return a.id<b.id; });
+    printf("%d", players[0].rank);
+    for (i=1; i<NP; i++)
+        printf(" %d", players[i].rank);
+    printf("\n");
+}
+```
+
+
+## 1057 Stack (30 分)
+
+1. 树状数组，http://www.cppblog.com/menjitianya/archive/2015/11/02/212171.html
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <stack>
+using namespace std;
+
+constexpr int lowbit(int i) {
+    // 正数->补码负数，取反加一，即从低位开始，到第一个1不变，其余取反。
+    // 返回2^k，其中k是i低位0的个数（到第一个1为止）。
+    return i&(-i);
+}
+
+int N, i, j, k, x;
+
+const int maxn = 100002;
+
+char cmd[21];
+
+// 树状数组，下标从1开始。
+// 定义x+2^k=y，y是x的父结点，其中k是x低位0的个数（到第一个1为止），其中x, y在数组c中体现为下标，下标从1开始。
+// c[i]的意义是数组c区间[i-2^k+1, i]的和，注意是左右闭区间，区间长度为2^k，k的定义同上，其中i从1开始。
+int c[maxn];
+
+stack<int> s;
+
+void add(int x, int v) {
+    for (int i=x; i<maxn; i+=lowbit(i))
+        c[i] += v; // 还要更新父结点。
+}
+
+// 返回树状数组中[1, i]的和。
+int sum(int i) {
+    int s = 0;
+    // 注意这里是`i>=1`而不是`i>=0`，因为lowbit(0)会返回0，导致无限循环。
+    // 所以如果推入的数字中有0的话，这个算法会失效。
+    for (; i>=1; i-=lowbit(i))
+        s += c[i];
+    return s;
+}
+
+// 事实上，最本质的想法是以推入栈的数字为key，添加到数组中，值为1，pop()时，以弹出的数字为key，从数组中删去，值为0。
+// 当查找中位数时，如果没有树状数组，那么就需要从左往右遍历数组，求和，当和为`(s.size()+1)/2`时，当前遍历到的下标就是
+// 栈中元素的中位数。
+//
+// 有了树状数组的组织方式，只是让我们可以进行二分查找，将查找中位数的时间复杂度从O(N)降低到O(logN * logN)。
+
+void PeekMedian() {
+    // 树状数组的下标从1开始，所以这里left初值为1。
+    // XXX 中位数的位置（从1开始），(序列长度+1)/2，整数除法，不管序列长度为奇数还是偶数。
+    int left=1, right=maxn-1, k=(s.size()+1)/2, mid;
+    while (left <= right) { // XXX 如果是[left, right]，那这里就是`<=`，如果是[left, right)，那就是`<`。
+        mid = (left+right)/2;
+        if (sum(mid) >= k)
+            right = mid-1;
+        else
+            left = mid+1;
+    }
+    printf("%d\n", left);
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%s", cmd);
+        if (cmd[1] == 'u') {
+            scanf("%d", &x);
+            s.push(x);
+            add(x, 1); // 将数字x添加到树状数组中。
+        } else if (cmd[1] == 'o') {
+            if (s.empty()) {
+                printf("Invalid\n");
+            } else {
+                add(s.top(), -1); // 将数组`s.top()`从树状数组中删除。
+                printf("%d\n", s.top());
+                s.pop();
+            }
+        } else {
+            if (s.empty())
+                printf("Invalid\n");
+            else
+                PeekMedian();
+        }
+    }
+}
+```
+
+
+## 1058 A+B in Hogwarts (20 分)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int a1, a2, a3, b1, b2, b3, carry;
+
+int main() {
+    scanf("%d.%d.%d %d.%d.%d", &a1, &a2, &a3, &b1, &b2, &b3);
+    a3 = a3+b3;
+    if (a3 >= 29) {
+        carry = 1;
+        a3 -= 29;
+    }
+    a2 = a2+b2+carry;
+    if (a2 >= 17) {
+        carry = 1;
+        a2 -= 17;
+    } else {
+        carry = 0;
+    }
+    a1 = a1+b1+carry;
+    printf("%d.%d.%d\n", a1, a2, a3);
+}
+```
+
+
+## 1059 Prime Factors (25 分)
+
+1. sqrt，<cmath>
+2. 考虑边界情况，算法失效的情况。
+3. 先整理出一定范围内的质数，然后再从小到大遍历质数，如果一个质数是输入的因子，那么就让输入不断整除该质数，当无法整除时，寻找下一个质因子。
+
+```cpp
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+const int maxn = 100010;
+
+struct PrimeFactor {
+    int factor;
+    int exponent;
+};
+
+PrimeFactor fac[10];
+
+int prime[maxn], np=0;
+
+bool isPrime(int x) {
+    if (x <= 1) return false;
+    int sqrt_ = sqrt(x*1.0);
+    for (int i=2; i<=sqrt_; i++) { // `<=`
+        if (x%i == 0)
+            return false;
+    }
+    return true;
+}
+
+void getPrime(int n) {
+    for (int i=2; i<n; i++) {
+        if (isPrime(i))
+            prime[np++] = i;
+    }
+}
+
+int getFactor(int N) {
+    int remain=N, count=0;
+    int sqrt_ = sqrt(N*1.0);
+    for (int i=0; i<np && prime[i]<=sqrt_; i++) {
+        if (remain%prime[i] != 0) continue;
+        fac[count].factor = prime[i];
+        while (remain%prime[i] == 0) {
+            fac[count].exponent++;
+            remain /= prime[i]; // 除法使得remain不会为0。
+        }
+        count++;
+        if (remain == 1) break;
+    }
+
+	// 注意处理常系数。
+    if (remain > 1) {
+        fac[count].factor = remain;
+        fac[count++].exponent = 1;
+    }
+    return count;
+}
+
+int N;
+
+int main() {
+    getPrime(maxn);
+    scanf("%d", &N);
+    if (N == 1) { // 当N==1时，算法会失效，直接返回。
+        printf("1=1\n");
+        return 0;
+    }
+    int nfac = getFactor(N);
+    int i;
+    printf("%d=", N);
+    for (i=0; i<nfac-1; i++) {
+        if (fac[i].exponent == 1) printf("%d*", fac[i].factor);
+        else printf("%d^%d*", fac[i].factor, fac[i].exponent);
+    }
+    if (fac[i].exponent == 1) printf("%d\n", fac[i].factor);
+    else printf("%d^%d\n", fac[i].factor, fac[i].exponent);
+}
+```
+
+
+## 1060 Are They Equal (25 分)
+
+1. 输入的数字比较大，要用字符串存储。
+2. 字符串处理题，值得好好学习一下。
+3. https://blog.csdn.net/river_lethe/article/details/78963556
+4. std::string api: https://en.cppreference.com/w/cpp/string/basic_string
+5. **第一个**有效数字必然不是0，在第一个有效数字后的数字才有可能为0。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+int N, n1, n2, i, pos_dot, pos_first_sig, k;
+string s1, s2;
+
+// 计算*10^k中的k。
+int getK(const string& s) {
+    if ((pos_dot=s.find('.')) == string::npos)
+        pos_dot = s.size();
+    if ((pos_first_sig=s.find_first_not_of("0.")) == string::npos) {
+        return 0;
+    }
+    // pos_dot指向'.'，pos_first_sig指向第一个有效数字字符。
+    int k = pos_dot - pos_first_sig;
+    if (k < 0) // 小数点在最前面。
+        k++;
+    return k;
+}
+
+// 获取0.d1...dN中的d1...dN。
+string getStd(const string& s, int N) {
+    pos_first_sig = s.find_first_not_of("0.");
+    string temp;
+    for (int i=pos_first_sig; i<s.size() && N; i++) {
+        if (s[i] != '.') { // 小数点可能在pos_first_sig后面，所以这个判断是必须的。
+            temp.push_back(s[i]);
+            N--;
+        }
+    }
+    // 有效数字不足N位，补0。
+    while (N--) {
+        temp.push_back('0');
+    }
+    return temp;
+}
+
+string getRes(const string& s, int N) {
+    return "0." + getStd(s, N) + "*10^" + to_string(getK(s));
+}
+
+int main() {
+    cin >> N >> s1 >> s2;
+    s1 = getRes(s1, N);
+    s2 = getRes(s2, N);
+    if (s1 == s2)
+        cout << "YES " << s1 << endl;
+    else
+        cout << "NO " << s1 << " " << s2 << endl;
+}
+```

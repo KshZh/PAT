@@ -1,0 +1,655 @@
+## 1061 Dating (20 分)
+
+1. 筛选字符，字符的范围要控制好。如果范围过大，就会提前选上一些不符合的字符，然后后面符合的字符就没机会选中了。
+2. ascii码的从小到大：'0' < 'A' < 'a'。但如果条件写成`s1[i]>='A' && s1[i]<='N'`一类，就不必关心/考虑ascii码相对大小了。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+int i, j;
+
+string s1, s2, s3, s4;
+
+string day[7] = {"MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"};
+
+int main() {
+    cin >> s1 >> s2 >> s3 >> s4;
+    for (j=i=0; i<s1.size() && i<s2.size(); i++) {
+        if (s1[i] == s2[i]) {
+            if (j == 0) {
+                if (s1[i]>='A' && s1[i]<='G') { // 字符的范围要控制好，一个星期七天，所以范围是['A', 'G']，如果范围过大，就会提前选上一些不符合的字符，然后后面符合的字符就没机会选中了。
+                    printf("%s ", day[s1[i]-'A'].c_str());
+                    j++;
+                }
+            } else if (j == 1) {
+                if (s1[i]>='A' && s1[i]<='N') {
+                    printf("%02d:", s1[i]-'A'+10);
+                    break;
+                } else if (s1[i]>='0' && s1[i]<='9') {
+                    printf("%02d:", s1[i]-'0');
+                    break;
+                }
+            }
+        }
+    }
+    for (i=0; i<s3.size() && i<s4.size(); i++) {
+        if (s3[i] == s4[i] && ((s3[i]>='a' && s3[i]<='z') || (s3[i]>='A' && s3[i]<='Z'))) {
+            printf("%02d\n", i);
+            break;
+        }
+    }
+}
+```
+
+
+## 1062 Talent and Virtue (25 分)
+
+1. 仔细看题，不要着急写代码，欲速则不达。
+2. 要看清题目的输入格式，注意区别，`scanf("%d %d %d", &id, &virtue, &talent);`和`scanf("%d %d %d", &id, &talent, &virtue);`。
+3. 先分类再按照类别排序，而不是挤到一起，然后在排序函数中分类。注意区别，`vector<Record> records[4];`和`Record records[100000]`。
+4. 注意题目给出的排序建议。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <vector>
+using namespace std;
+
+struct Record {
+    int id, talent, virtue, total; // 缓存一个总分，避免排序时反复计算。
+    Record(int i, int t, int v): id(i), talent(t), virtue(v), total(t+v) {}
+};
+
+vector<Record> records[4];
+
+int N, L, H, i, n, id, talent, virtue;
+
+bool cmp(const Record& a, const Record& b) {
+    // If there is a tie of the total grade, they must be ranked with respect to their virtue grades in non-increasing order.
+    // If there is still a tie, then output in increasing order of their ID's.
+    if (a.total != b.total) return a.total > b.total;
+    // 总分相同按virtue升序排序。
+    if (a.virtue != b.virtue) return a.virtue > b.virtue;
+    // virtue相同按talent升序排序。
+    // 错误，总分相同，virtue相同，那么talent必然相同。只能按id降序排序。
+    return a.id < b.id;
+}
+
+int main() {
+    scanf("%d %d %d", &N, &L, &H);
+    for (n=i=0; i<N; i++) {
+        scanf("%d %d %d", &id, &virtue, &talent);
+        if (talent<L || virtue<L) continue;
+        n++;
+		// XXX 先分类。
+        if (talent>=H && virtue>=H) records[0].push_back(Record(id, talent, virtue));
+        else if (virtue>=H) records[1].push_back(Record(id, talent, virtue));
+        else if (talent<=virtue) records[2].push_back(Record(id, talent, virtue));
+        else records[3].push_back(Record(id, talent, virtue));
+    }   
+    printf("%d\n", n);
+    for (i=0; i<4; i++) {
+		// XXX 再按照类别排序。
+        sort(records[i].begin(), records[i].end(), cmp);
+        for (auto& r: records[i])
+            printf("%d %d %d\n", r.id, r.virtue, r.talent);
+    }
+}
+```
+
+
+## 1063 Set Similarity (25 分)
+
+1. std::set，自动过滤重复元素，则有序。如果不需要有序，可以用std::unordered_set，获得一点效率的提升。
+2. 如果输入是从1开始的，而我们的存储是从0开始的，那么记得把输入转换一下，否则就会出错。
+3. %在格式化字符串中是特殊字符，要打印%，则要%%。
+
+```cpp
+#include <set>
+#include <iostream>
+using namespace std;
+
+int N, M, K, i, j, x, y, Nc, Nt;
+
+set<int> s[50]; 
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d", &M);
+        for (j=0; j<M; j++) {
+            scanf("%d", &x);
+            s[i].insert(x); // set容器自动过滤重复的元素。
+        }
+    }
+    scanf("%d", &K);
+    for (i=0; i<K; i++) {
+        scanf("%d %d", &x, &y);
+        x--;
+        y--; // 输入是从1开始的，转换为set的下标。
+        Nc = 0;
+        Nt = s[y].size(); // 先让Nt为其中一个setA的大小，然后遍历另一个setB，出现setA中没有的元素，则`Nt++`，否则`Nc++`。
+        for (int e: s[x]) {
+            if (s[y].find(e) != s[y].end())
+                Nc++;
+            else
+                Nt++;
+        }
+        double r = double(Nc)/Nt*100;
+        printf("%.1f%%\n", r); // 注意%是特殊字符，要打印%，则要%%。
+    }
+}
+```
+
+
+## 1064 Complete Binary Search Tree (30 分)
+
+1. 给出一个序列，要求构造一颗二叉排序树。显然，构造出的二叉排序树有多种可能。但如果要求构造出的二叉排序树是一颗完全二叉树，那么这样的二叉排序树只有一颗。
+2. 满二叉树，即每一层k的结点数都具有最大值2^k-1（其中k从1开始）。完全二叉树，若深度为k，有n个结点，则当且仅当其每一个结点都与深度为k的满二叉树中编号从1到n的结点一一对应时，称为完全二叉树。完全/满二叉树有一个性质，若i表示当前结点（i从1开始），则其左孩子为2i，右孩子为2i+1，若2i>n，说明左孩子不存在，若2i+1>n，说明右孩子不存在。
+3. 因为知道要求的二叉排序树是一颗完全二叉树，所以我们可以用数组来存储这棵树。
+4. 对一颗二叉排序树进行中序遍历，可以得到一个有序的升序序列。所以我们可以先将输入排序成升序序列，再通过中序遍历创建这颗二叉树。
+5. 注意，如果下标从1开始，那么排序时要注意，`sort(a, a+N);`错误，`sort(a+1, a+1+N);`正确。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+struct Node {
+    int key;
+    Node* left;
+    Node* right;
+    Node(int k): key(k), left(nullptr), right(nullptr) {}
+};
+
+int a[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+void insert(Node*& t, int key) {
+    if (t == nullptr) {
+        t = new Node(key);
+    } else if (t->key > key) {
+        insert(t->left, key);
+    } else {
+        insert(t->right, key);
+    }
+}
+
+Node* createBST() {
+    Node* t = nullptr;
+    for (int i=0; i<10; i++)
+        insert(t, a[i]);
+    return t;
+}
+
+void inorder(Node* t) {
+    if (t) {
+        inorder(t->left);
+        printf("%d\n", t->key);
+        inorder(t->right);
+    }
+}
+
+
+int main() {
+    Node* t = createBST();
+    inorder(t);
+}
+```
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <vector>
+using namespace std;
+
+inline int lchild(int i) {
+    return i*2;
+}
+
+inline int rchild(int i) {
+    return i*2+1;
+}
+
+int N, i, j;
+
+// 下标从1开始。
+
+const int maxn = 1000;
+
+int a[maxn+1];
+
+int t[maxn+1];
+
+void inorder(int i) {
+    if (i <= N) {
+        inorder(lchild(i));
+        t[i] = a[j++];
+        inorder(rchild(i));
+    }
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=1; i<=N; i++)
+        scanf("%d", a+i);
+    // sort(a, a+N); // 错误，下标从1开始。
+    sort(a+1, a+N+1); // 默认升序。
+    j = 1;
+    inorder(1);
+    printf("%d", t[1]);
+    for (i=2; i<=N; i++)
+        printf(" %d", t[i]);
+    printf("\n");
+}
+```
+
+
+## 1065 A+B and C (64bit) (20 分)
+
+1. 注意输出格式，测试序号是从1开始的。
+2. 注意long好像也是4字节，long long才保证是8字节。
+3. 溢出判断时，因为0在加法中没有贡献，所以可以不必判断`a<=0 && b<=0`这种，因为当其中一个为0时，必然不会溢出。
+4. 注意同号相加溢出的判断是`a>0 && b>0 && r<0`和`a<0 && b<0 && r>=0`，注意后者的`r>=0`。这是因为0占用了正数的一个位置，所以负数比正数大1，即负数的个数比正数多1个（0不算正数也不是负数）。那么在一个模2^32系统（一个圆环）中，这使得两个最大的负数相加，可以溢出到0（一个占了-1到-2^31这2^31个数，一个占了(2^31)-1到0这2^31个数），而两个最大的正数相加，最多溢出到-2（一个占了1到(2^31)-1这(2^31)-1个数，另一个占了-2^31到-2这(2^31)-1个数）。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int a = 0x7fffffff;
+    int b = 0x7fffffff;
+    printf("%d\n", a+b); // -2
+    a = 1<<31;
+    b = 1<<31;
+    printf("%d\n", a+b); // 0
+}
+```
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// 注意long好像也是4字节，long long才保证是8字节。
+long long int a, b, c, r;
+
+int N, i;
+
+int main() {
+    scanf("%d", &N);
+    // for (i=0; i<N; i++) { // 注意输出格式，测试序号是从1开始的。
+    for (i=1; i<=N; i++) {
+        scanf("%lld %lld %lld", &a, &b, &c);
+        r = a+b;
+        if (a>0 && b>0 && r<0) // 同号且溢出。
+            printf("Case #%d: true\n", i);
+        else if (a<0 && b<0 && r>=0) // 同号且溢出。
+            printf("Case #%d: false\n", i);
+        else if (r > c) // 同号不溢出或异号不溢出。
+            printf("Case #%d: true\n", i);
+        else
+            printf("Case #%d: false\n", i);
+    }
+}
+```
+
+
+## 1066 Root of AVL Tree (25 分)
+
+1. An AVL tree is a self-balancing binary search tree. AVL树是二叉查找树，然后是平衡的。
+2. TODO，实现删除操作。
+
+
+```cpp
+#include <iostream>
+using namespace std;
+
+struct Node {
+    int key;
+    Node* left;
+    Node* right;
+    Node(int k): key(k), left(nullptr), right(nullptr) {}
+};
+
+int N, i;
+
+int a[20];
+
+// 叶子的高度反而是0，高度的定义是某一结点到其子树中的叶结点的最长路径长度。
+// 根的深度反而是0，深度的定义是某一结点到根的路径长度。
+int getHeight(Node* t) {
+    if (t == nullptr)
+        return -1;
+    return max(getHeight(t->left), getHeight(t->right)) + 1;
+}
+
+// 右旋，返回旋转后新的根。
+// 右旋时，为什么要将支点（父结点的左孩子）的右子树作为父结点的左孩子，因为右旋时，父结点要作为支点的右孩子，所以要抛弃支点原先的右孩子，
+// 且可能父结点也有右孩子，所以支点舍弃的右孩子不能作为父结点的右孩子，但右旋后，父结点必定没有了左孩子。
+// 图像：/
+Node* rotateRight(Node* root) {
+    Node* lchild = root->left;
+    root->left = lchild->right;
+    lchild->right = root;
+    return lchild;
+}
+
+// 图像：\
+// 左旋，返回旋转后新的根。
+Node* rotateLeft(Node* root) {
+    Node* rchild = root->right;
+    root->right = rchild->left;
+    rchild->left = root;
+    return rchild;
+}
+
+// 图像：/
+//       \
+// 先对根的左孩子做左旋，使下面平衡，再对根做右旋，使整体平衡。
+Node* rotateLeftRight(Node* root) {
+    // XXX 赋值，也就是把表达式的值拷贝到root->left标识的对象上，即使该对象是一个指针。
+    root->left = rotateLeft(root->left);
+    return rotateRight(root);
+}
+
+// 图像：\
+//       /
+Node* rotateRightLeft(Node* root) {
+    root->right = rotateRight(root->right);
+    return rotateLeft(root);
+}
+
+Node* insert(Node* root) {
+    if (root == nullptr) {
+        root = new Node(a[i]);
+    } else {
+        if (a[i] < root->key) {
+            root->left = insert(root->left);
+			// 借助递归，从叶往根逐步再平衡。（从下到上）
+            if (getHeight(root->left) - getHeight(root->right) > 1) {
+                // 两种插入后不平衡的情况，LL和LR。
+                root = a[i]<root->left->key? rotateRight(root): rotateLeftRight(root);
+            }
+            // else 没有不平衡，不需要调整。
+        } else {
+            root->right = insert(root->right);
+			// 借助递归，从叶往根逐步再平衡。（从下到上）
+            if (getHeight(root->right) - getHeight(root->left) > 1) {
+                // 两种插入后不平衡的情况，RR和RL。
+                root = a[i]>root->right->key? rotateLeft(root): rotateRightLeft(root);
+            }
+        }
+    }
+    return root;
+}
+
+int main() {
+    scanf("%d", &N);
+    Node* root = nullptr;
+    for (i=0; i<N; i++) {
+        scanf("%d", a+i);
+        root = insert(root);
+    }
+    printf("%d\n", root->key);
+}
+```
+
+
+## 1067 Sort with Swap(0, i) (25 分)
+
+1. 贪心问题，只是用swap()来排序，求将输入序列排序所需的swap()个数。
+2. https://www.liuchuo.net/archives/2301
+3. 考试的时候，实在想不出来，可以考虑暴力破解，至少能得几分。
+4. 这种题就考试前背一下吧。
+5. 看不懂。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// a[i]表示数字i在序列中的位置，从0开始。
+int N, cnt, i, x, a[100001];
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d", &x);
+		a[x] = i;
+	}
+    for (i=1; i<N; i++) {
+        if (i != a[i]) {
+            while (a[0] != 0) { // 直到哨兵a[0]换到了正确的位置。
+                swap(a[0], a[a[0]]); // 将数字0与数字a[0]交换，这样会使得数字a[0]在序列中的下标a[a[0]]等于a[0]。
+                cnt++;
+            }
+            if (a[i] != i) {
+                swap(a[0], a[i]);
+                cnt++;
+            }
+        }
+    }
+    printf("%d\n", cnt);
+}
+```
+
+## 洛谷 P1048 采药
+
+1. 动态规划，01背包问题。
+2. https://zhuanlan.zhihu.com/p/35278858，其中有回溯的代码。
+3. 如果使用了一维的数组，就无法进行回溯，查看挑选了哪些物品。
+
+背包问题，对一些有某重量和某价值的物品<vi, wi>，和一个可承重W的背包，
+求出某些物品的组合，使得sum(wi)<=W，sum(vi)最大。
+
+这些物品编号为i，背包承重为j，则用dp[i][j]表示编号<=i的物品的组合（0/1，即对某个物品，可选可不选），
+这个组合使得sum(wi)<=j，sum(vi)最大。
+对于编号为i的物品，可以：
+1. 选，则dp[i][j] = dp[i-1][j-w[i]] + w[i];
+2. 不选，则dp[i][j] = dp[i-1][j];
+取其中使得dp[i][j]最大的选项即可。从上面的递推式可看出，编号i应从1开始，这样才不需要检查边界。
+
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int T, M, i, j;
+
+int dp[101][1001]; // dp[i][j]表示前i个（包括第i个物品），挑着放入最大承重j的背包中，最大的价值。
+
+int w[101], v[101];
+
+int main() {
+    scanf("%d %d", &T, &M);
+    for (i=1; i<=M; i++)
+        scanf("%d %d", w+i, v+i);
+	// 边界是`dp[0][j]=0`和`dp[i][0]=0`，这已经由全局变量默认初始化完成了。
+	// 从边界开始往上推。
+    for (i=1; i<=M; i++) { // 枚举前i个物品，
+        for (j=w[i]; j<=T; j++) { // 枚举最大承重j，
+            dp[i][j] = max(dp[i-1][j-w[i]]+v[i], dp[i-1][j]); // 选或不选物品i，看谁能够构造出更大的价值。
+        }
+    }
+    printf("%d\n", dp[M][T]);
+}
+
+/*
+void traceBack(int i, int j) {
+    if (i <= 0)
+        return;
+    if (dp[i][j] == dp[i-1][j]) {
+        // 没选i。
+        traceBack(i-1, j);
+    } else {
+        v.push_back(i);
+        traceBack(i-1, j-w[i]);
+    }
+}
+*/
+```
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int T, M, i, j;
+
+int dp[1001]; // 滚动数组，见算法笔记。
+
+int w[101], v[101];
+
+int main() {
+    scanf("%d %d", &T, &M);
+    for (i=1; i<=M; i++)
+        scanf("%d %d", w+i, v+i);
+    for (i=1; i<=M; i++)
+        for (j=T; j>=w[i]; j--) // j要从T开始，因为`j-w[i]`用到了比j小的哪些状态，如果j从1开始，那么状态`dp[j-w[i]]`还没用，就被覆盖了。
+            dp[j] = max(dp[j-w[i]]+v[i], dp[j]);
+    printf("%d\n", dp[T]);
+}
+```
+
+## 1068 Find More Coins (30 分)
+
+1. 01背包问题。
+2. 因为要输出选了哪些硬币，所以就需要回溯。回溯方法见下面的代码，这里回溯的方法不同于上面。
+3. 有一个点是，可能有多个组合满足要求，那么输出最小的那个组合，大佬的处理是先对硬币按币值降序排序。为什么这样就可以，我也不懂。当然，也学到了，以后如果遇到类似的问题，先对输入升序或降序排一下序试试，没准就管用了。
+4. 下标从1开始，那么`sort(w, w+N)`和`sort(w+1, w+N)`都是错的，正确应该`sort(w+1, w+1+N)`。
+5. 对于格式化输出，输出删除符'\b'是没有的。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int N, M, i, j;
+
+// 下标都从1开始。
+
+int w[10001]; // 硬币面值。
+
+int dp[101];
+
+bool choice[10001][101];
+
+// 对于这个问题，可以认为硬币的vi和wi相等，同样将硬币编号为i，求一些硬币的组合，使得sum(vi)==W。
+
+int main() {
+    scanf("%d %d", &N, &M);
+    for (i=1; i<=N; i++)
+        scanf("%d", w+i);
+    sort(w+1, w+N+1, [](int a, int b){ return a>b; }); // 先降序排序。
+    for (i=1; i<=N; i++) {
+        for (j=M; j>=w[i]; j--) { // j从M开始。
+            // dp[j] = max(dp[j-w[i]]+w[i], dp[j]);
+            if (dp[j] <= dp[j-w[i]]+w[i]) { // 要用`<=`。
+                // 如果最优状态改变。
+                choice[i][j] = true;
+                dp[j] = dp[j-w[i]]+w[i];
+            }
+        }
+    }
+    if (dp[M] != M) {
+        printf("No Solution\n");
+        return 0;
+    }
+    for (i=N, j=M; j!=0; i--) {
+        if (choice[i][j]) {
+            if (j == M)
+                printf("%d", w[i]);
+            else
+                printf(" %d", w[i]);
+            j -= w[i];
+        }
+    }
+}
+```
+
+
+## 1069 The Black Hole of Numbers (20 分)
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int N, i;
+
+int digits[4];
+
+bool cmp2(int a, int b) {
+    return a > b;
+}
+
+pair<int, int> getNum(int x) {
+    pair<int, int> p{0, 0};
+    for (i=0; i<4; i++, x/=10) // 这里并没有使当x为0时退出，而是填满4个数字，若x为0，则填充0。
+        digits[i] = x%10;
+    sort(digits, digits+4, cmp2);
+    for (i=0; i<4; i++)
+        p.first = p.first*10 + digits[i];
+    // sort(digits, digits+4, cmp1); // XXX 排一次就够了，然后循环顺序遍历，或逆序遍历。
+    for (i=3; i>=0; i--)
+        p.second = p.second*10 + digits[i];
+    return p;
+}
+
+int main() {
+    scanf("%d", &N);
+    pair<int, int> p;
+    do {
+        p = getNum(N);
+        N = p.first - p.second;
+        printf("%04d - %04d = %04d\n", p.first, p.second, N);
+    } while (N!=6174 && N!=0);
+    // XXX 注意，每一轮循环都要检查N!=0，不能只在第一次检查，因为后面计算过程中，有可能减法得到一个4个数位都相等的数。
+}
+```
+
+
+## 1070 Mooncake (25 分)
+
+1. 注意inventory可能是小数，这是因为inventory的单位是千吨，而不是一个月饼！
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+struct Node {
+    // int inventory; // 注意inventory可能是小数，这是因为inventory的单位是千吨，而不是一个月饼！
+    float inventory;
+    float price;
+    float unitPrice; // 每千吨的价格。
+};
+
+Node a[1000];
+
+int N, D, i;
+
+float total;
+
+int main() {
+    scanf("%d %d", &N, &D);
+    for (i=0; i<N; i++)
+        scanf("%f", &a[i].inventory);
+    for (i=0; i<N; i++) {
+        scanf("%f", &a[i].price);
+        a[i].unitPrice = a[i].price/a[i].inventory;
+    }
+    // 按单价降序排序，总是先取单价最高的月饼进行销售。
+    sort(a, a+N, [](const Node& a, const Node& b){ return a.unitPrice>b.unitPrice; });
+    for (i=0; i<N && D; i++) {
+        if (a[i].inventory <= D) {
+            total += a[i].price;
+            D -= a[i].inventory;
+        } else {
+            total += a[i].unitPrice*D;
+            break;
+        }
+    }
+    printf("%.2f\n", total);
+}
+```

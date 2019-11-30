@@ -1,0 +1,840 @@
+## 1131 Subway Map (30 分)
+
+1. 单个结点可能对应多条线路，单个结点无法唯一确定它所在的路线，如交叉结点，如果两个结点呢？显然，两个结点可以唯一确定一条线路。
+2. 如果可以根据输入获取一个结点关联的所有结点，并且无边权，或者边权都一样，那么就可以考虑用邻接表来存储图。
+3. 如果没有边权和点权，或都相等，那就没必要用dijkstra算法求最短路径了，可直接用dfs。
+4. 注意`printf("Take Line#%d from %4d to %4d.\n", pre, x, shortest[i-1]);`和`printf("Take Line#%d from %04d to %04d.\n", pre, x, shortest[i-1]);`的区别。
+5. 当反复确定程序逻辑没问题，又找不出原因时，可以检查一下输出语句的格式是否符合题目要求。
+6. 记录两点所在的直线的id，可以用lineNO[10000][10000]，但这样如果结点数较少，就会导致内存利用率不高，可以用unordered_map，做一个hash函数，如a*10000+b。
+7. 如果思路和大佬差不多，但代码过不了所有测试，比较大佬的代码找不出原因，可以用大佬的代码来逐步按自己的代码改，直到无法通过测试，从而找到问题。
+
+```cpp
+#include <iostream>
+#include <climits>
+#include <vector>
+#include <unordered_map>
+using namespace std;
+
+// int times[10000]; // 出现次数大于1的就是不同路线的交叉点。
+// vector<int> line[10000]; // line[i]表示站i所属的线路，站i可能属于多条线路。`line[i].size()>1`表示这是一个交叉点。
+
+int N, M, K, i, j, x, y, src, dst, shortestLen=INT_MAX, minTransfer=INT_MAX;
+
+// int edge[10000][10000];
+// 如果可以根据输入获取一个结点关联的所有结点，并且无边权，或者边权都一样，那么就可以考虑用邻接表来存储图。
+unordered_map<int, vector<int>> graph;
+
+// int line[10000][10000]; // 单个结点可能对应多条线路，单个结点无法唯一确定它所在的路线，如交叉结点，如果两个结点呢？显然，两个结点可以唯一确定一条线路。
+unordered_map<int, int> line;
+
+int hash_(int a, int b) {
+    return a*10000+b;
+}
+
+vector<int> path, shortest;
+
+bool visited[10000];
+
+int getTransfer() {
+    int cnt = 0, pre = line[hash_(path[0], path[1])];
+    for (i=2; i<path.size(); i++) {
+        if (line[hash_(path[i-1], path[i])] != pre) {
+            cnt++;
+            pre = line[hash_(path[i-1], path[i])];
+        }
+    }
+    return cnt;
+}
+
+void dfs(int v) {
+    if (v == dst) {
+        if (path.size()<shortestLen || (path.size()==shortestLen && getTransfer()<minTransfer)) {
+            shortest = path;
+            shortestLen = shortest.size();
+            minTransfer = getTransfer();
+        }
+        return;
+    }
+    if (path.size() >= shortestLen)
+        return;
+    visited[v] = true;
+    for (int x: graph[v]) {
+        if (!visited[x]) {
+            path.push_back(x);
+            dfs(x);
+            path.pop_back();
+        }
+    }
+    visited[v] = false;
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=1; i<=N; i++) { // 路线从1开始编号。
+        scanf("%d %d", &M, &x);
+        for (j=1; j<M; j++) {
+            scanf("%d", &y);
+            graph[x].push_back(y);
+            graph[y].push_back(x);
+            // line[x][y] = line[y][x] = i;
+            line[hash_(x, y)] = line[hash_(y, x)] = i;
+            x = y;
+        }
+    }
+    scanf("%d", &K);
+    while (K--) {
+        scanf("%d %d", &src, &dst);
+        shortestLen = INT_MAX;
+        minTransfer = INT_MAX;
+        path.clear(); // 多次查询，记得清空容器，避免影响下次查询。
+        path.push_back(src);
+        dfs(src);
+        printf("%d\n", shortest.size()-1);
+        int pre = line[hash_(shortest[1], shortest[0])];
+        for (x=shortest[0], i=2; i<shortest.size(); i++) {
+            if (line[hash_(shortest[i], shortest[i-1])] != pre) {
+                printf("Take Line#%d from %04d to %04d.\n", pre, x, shortest[i-1]);
+                x = shortest[i-1];
+                pre = line[hash_(shortest[i], shortest[i-1])];
+            }
+        }
+        printf("Take Line#%d from %04d to %04d.\n", pre, x, shortest.back());
+        /*
+        for (const auto& p: graph)
+            visited[p.first] = false;
+        */
+    }
+}
+```
+
+
+## 1132 Cut Integer (20 分)
+
+1. 并不是数字就一定要用int等类型存储，也可以用string接收输入。
+2. 除/模0会出现浮点错误。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+int N, i;
+
+long a, b;
+
+string num;
+
+int main() {
+    cin >> N;
+    while (N--) {
+        // scanf("%d", &x);
+        cin >> num; // 作为字符串输入，处理起来方便许多，比如能够马上知道数字的位数而不必遍历一次。
+        a = b = 0;
+        for (i=num.size()/2; i<num.size(); i++)
+            a = a*10+(num[i]-'0');
+        for (i=0; i<num.size()/2; i++)
+            b = b*10+(num[i]-'0');
+        if (a!=0 && b!=0 && stol(num)%(a*b) == 0) // 除/模0会出现浮点错误。
+            printf("Yes\n");
+        else
+            printf("No\n");
+    }
+}
+```
+
+
+## 1133 Splitting A Linked List (25 分)
+
+1. 从一个链表中提取/分割出多个链表，再合并。
+2. 非负数包括0和正数。
+3. next指针的值就是下一个结点的地址，所以如果能够用顺序存储，等于知道了下一个结点的地址，这样在操作链表时就可以不用修改next指针了。
+4. 注意分情况讨论，前两个链表可能为空。
+5. 这道题取巧的话，可以先遍历一遍，建立data到addr的映射，同时先把小于0的data顺序推入vector中，再遍历一遍，将在[0, k]内的data顺序推入vector中，最后再遍历一遍，将其余的data顺序推入vector中。然后对vector中的data顺序输出，next值就是vector中下一个data的地址。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+struct Node {
+    int data;
+    int next;
+    Node(): next(-1) {}
+};
+
+int N, K, head, headNegative, headInK, i, addr, next_, data, p, pNegative, pInK, q;
+
+Node list[100003]; // 以结点的地址为下标。
+
+int main() {
+    scanf("%d %d %d", &head, &N, &K);
+    for (i=0; i<N; i++) {
+        scanf("%d %d %d", &addr, &data, &next_);
+        list[addr].data = data;
+        list[addr].next = next_;
+    }
+    // 加入一个前驱结点，方便操作。
+    list[100000].next = head;
+    head = 100000;
+    p = head;
+    headNegative = 100001;
+    list[headNegative].next = -1;
+    // list[headNegative].next = list[head].next;
+    pNegative = headNegative;
+    headInK = 100002;
+    list[headInK].next = -1;
+    // list[headInK].next = list[head].next;
+    pInK = headInK;
+    while (list[p].next != -1) { // p指向正要处理的结点的前驱结点。
+        q = list[p].next; // q指向当前要处理的结点。
+        if (list[q].data < 0) {
+            // 从原链表中删去，插入负数链表中。
+            list[p].next = list[q].next; // 删去。
+            list[pNegative].next = q; // 插入负数链表尾部。
+            list[q].next = -1;
+            // list[q].next = list[headInK].next;
+            pNegative = q;
+        } else if (list[q].data>=0 && list[q].data<=K) {
+            // 同上。
+            list[p].next = list[q].next; // 删去。
+            list[pInK].next = q;
+            list[q].next = -1;
+            // list[q].next = list[head].next;
+            pInK = q;
+        } else {
+            // 不符合条件，移到下一个结点。
+            p = list[p].next;
+        }
+    }
+    // 将三个链表首尾拼接起来，注意不要把头结点接进去。
+	// 注意分情况讨论，前两个链表可能为空。
+    if (pNegative==headNegative && pInK==headInK) {
+        p = list[head].next;
+    } else if (pNegative==headNegative && pInK!=headInK) {
+        list[pInK].next = list[head].next;
+        p = list[headInK].next;
+    } else if (pNegative!=headNegative && pInK==headInK) {
+        list[pNegative].next = list[head].next;
+        p = list[headNegative].next;
+    } else {
+        list[pNegative].next = list[headInK].next;
+        list[pInK].next = list[head].next;
+        p = list[headNegative].next;
+    }
+    while (list[p].next != -1) { // 因为没有插入和删除，不需要修改前驱结点，只是简单地遍历，所以p指向当前要处理的结点。
+        printf("%05d %d %05d\n", p, list[p].data, list[p].next);
+        p = list[p].next;
+    }
+    printf("%05d %d -1\n", p, list[p].data);
+}
+```
+
+
+## 1134 Vertex Cover (25 分)
+
+1. 多轮查询，一轮结束后，记得重置一些变量，避免影响下一轮查询。
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int N, M, K, i, a, b, Nv;
+
+bool flag;
+
+// 没有边权，且输入给出了每个点关联的所有点，可用邻接表存储。
+vector<vector<int>> graph;
+
+vector<int> vertexSet;
+
+int main() {
+    // N个结点，结点从0开始编号。
+    scanf("%d %d", &N, &M);
+    graph.resize(N);
+    vertexSet.resize(N);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &a, &b);
+        // 无向图。
+        graph[a].push_back(b);
+        graph[b].push_back(a);
+    }
+    scanf("%d", &K);
+    while (K--) {
+        scanf("%d", &Nv);
+        for (i=0; i<Nv; i++) {
+            // scanf("%d", &vertexSet[i]);
+            // 不顺序存储结点ID，而以结点ID作为下标，值为1表示该结点属于当前输入的结点集，0反之。
+            scanf("%d", &a);
+            vertexSet[a] = 1;
+        }
+        flag = true;
+        for (i=0; flag && i<N; i++) {
+            // 以结点cover中的结点出发的边必满满足"each edge of the graph is incident to at least one vertex of the set"。
+            // 所以主要考察不以结点cover中的结点出发的边。
+            if (vertexSet[i] == 1)
+                continue;
+            for (int x: graph[i]) {
+                if (vertexSet[x] != 1) {
+                    flag = false;
+                    break;
+                }
+            }
+        }
+        if (flag)
+            printf("Yes\n");
+        else
+            printf("No\n");
+        for (i=0; i<N; i++) // 多轮查询，一轮结束后，记得重置一些变量，避免影响下一轮查询。
+            vertexSet[i] = 0;
+    }
+}
+```
+
+
+## 1135 Is It A Red-Black Tree (30 分)
+
+1. 普通二叉树需要先序和中序或后序和中序序列才能唯一确定一棵二叉树。但对于二叉搜索树来说，只需要三个序列中的一个，再加上二叉搜索树本身的性质，即可唯一确定一棵二叉搜索树。
+2. 红黑树的定义：
+(1) Every node is either red or black.
+(2) The root is black.
+(3) Every leaf (NULL) is black.
+(4) If a node is red, then both its children are black.
+(5) For each node, all simple paths from the node to descendant leaves contain the same number of black nodes.
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int K, N, i;
+
+bool flag;
+
+int pre[30];
+
+struct Node {
+    int data;
+    Node* left;
+    Node* right;
+    Node(): left(nullptr), right(nullptr) {}
+    Node(int d): data(d), left(nullptr), right(nullptr) {}
+};
+
+// 参数start是一棵BST的先序序列的起始下标。
+Node* createBST(int start, int len) {
+    if (len <= 0)
+        return nullptr;
+    int root = pre[start];
+    for (i=start+1; i<start+len && abs(root)>abs(pre[i]); i++)
+        ;
+    int rightStart = i;
+    int leftStart = start+1;
+    int leftLen = rightStart - leftStart;
+    int rightLen = len - 1 - leftLen;
+    Node* t = new Node(root);
+    t->left = createBST(leftStart, leftLen);
+    t->right = createBST(rightStart, rightLen);
+    return t;
+}
+
+void freeBST(Node* t) {
+    if (t) {
+        freeBST(t->left);
+        freeBST(t->right);
+        delete t;
+    }
+}
+
+Node* tree;
+
+int dfs(Node* root) {
+    if (root == nullptr)
+        return 1; // 返回黑色结点数，叶子是黑色的NULL结点。
+    int x=0, y=0;
+    if (root->left) {
+        if (root->data<0 && root->left->data<0) { // 红色结点的左右孩子都要是黑色结点。
+            flag = false;
+            return -1; // 让前面的递归调用尽快返回。
+        }
+        x = dfs(root->left);
+        if (x == -1)
+            return -1;
+    }
+    if (root->right) {
+        if (root->data<0 && root->right->data<0) {
+            flag = false;
+            return -1;
+        }
+        y = dfs(root->right);
+        if (y == -1)
+            return -1;
+    }
+    if (x != y) { // 一个结点到其底下的叶子结点的路径上的黑色结点数相等。
+        flag = false;
+        return -1;
+    }
+    if (root->data > 0)
+        return x+1; // 当前结点是黑色的，加一。
+    else
+        return x;
+}
+
+int main() {
+    scanf("%d", &K);
+    while (K--) {
+        scanf("%d", &N);
+        for (i=0; i<N; i++)
+            scanf("%d", pre+i);
+        flag = true;
+        if (pre[0] < 0) { // 根要求是黑色的。
+            flag = false;
+        } else {
+            tree = createBST(0, N);
+            dfs(tree);
+            freeBST(tree);
+        }
+        if (flag)
+            printf("Yes\n");
+        else
+            printf("No\n");
+    }
+}
+```
+
+
+## 1136 A Delayed Palindrome (20 分)
+
+1. 大整数加法。
+2. 回文数。
+3. 最多一千位，但相加最高位可能进位，本来似乎分配1001位就可以了，但是不行，因为可能一个1001位的结果仍不是回文数，需要再做加法，最高位再次进位，故要分配多一些。
+4. 尽量不要用全局变量。
+
+```cpp
+int i;
+
+int a[100];
+
+void foo() {
+	bool flag = true;
+	for (int i=0; i<M; i++) {
+		// do something
+	}
+	if (flag) {
+		a[i] = 1; // 可能下标越界。这里使用的是全局的i，这个i正在被main()函数使用。
+	}
+}
+
+int main() {
+	for (i=0; i<N; i++)
+		foo();
+}
+```
+
+```cpp
+#include <iostream>
+using namespace std;
+
+struct BigInt {
+    int digits[1010]; // 最多一千位，但相加最高位可能进位，故要分配多一些。
+    int nDigits;
+    BigInt(int n): nDigits(n) {}
+    BigInt(const string& num): nDigits(num.size()) {
+        for (int i=nDigits-1, j=0; i>=0; i--, j++)
+            digits[j] = num[i]-'0';
+    }
+};
+
+void print(const BigInt& x) {
+    for (int i=x.nDigits-1; i>=0; i--)
+        printf("%d", x.digits[i]);
+}
+
+bool isPalindromic(const BigInt& x) {
+    for (int i=0; i<x.nDigits/2; i++) {
+        if (x.digits[i] != x.digits[x.nDigits-1-i])
+            return false;
+    }
+    return true;
+}
+
+// 大整数相加。
+BigInt add(BigInt& x) {
+    BigInt y(x.nDigits);
+    BigInt z(x.nDigits);
+    for (int i=0, j=x.nDigits-1; i<x.nDigits; i++, j--) {
+        y.digits[i] = x.digits[j];
+    }
+    int carry = 0, i;
+    for (i=0; i<x.nDigits; i++) {
+        z.digits[i] = x.digits[i]+y.digits[i]+carry;
+        if (z.digits[i] > 9) {
+            z.digits[i] -= 10;
+            carry = 1;
+        } else {
+            carry = 0;
+        }
+    }
+    // 处理最高位的进位。
+    if (carry) {
+        z.digits[i] = 1;
+        z.nDigits++;
+    }
+    print(x);
+    printf(" + ");
+    print(y);
+    printf(" = ");
+    print(z);
+    printf("\n");
+    return z;
+}
+
+
+int main() {
+    string num;
+    cin >> num;
+    BigInt x(num);
+    if (isPalindromic(x)) {
+        print(x);
+        printf(" is a palindromic number.\n");
+        return 0;
+    }
+    // 最多迭代10次。
+    for (int i=0; i<10; i++) {
+        BigInt z = add(x);
+        if (isPalindromic(z)) {
+            print(z);
+            printf(" is a palindromic number.\n");
+            return 0;
+        }
+        x = z;
+    }
+    printf("Not found in 10 iterations.\n");
+}
+```
+
+
+## 1137 Final Grading (25 分)
+
+1. 向上取整，可以加上一个0.5，再强制转换为int。
+2. 注意题目中名词的不同，Gfinal是final exam的成绩，G才是final grade。
+3. 用数组顺序存储结点，这样排序会方便，然后用map记住结点在数组中的下标，这样我们就可以通过结点的id成员找到数组中的结点。
+4. **因为map默认是按键排序的，所以用map<string, Node>，然后实现Node的<运算符，并没有用**。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <string>
+#include <unordered_map>
+using namespace std;
+
+struct Node {
+    string id;
+    int Gp, Gmid, Gfinal, G;
+    // If some score does not exist, output "−1" instead.
+    // XXX 这是指没有输入，如果输入的成绩是0，那么也算存在。所以不能将0作为特殊值。
+    // Node(): Gp(0), Gmid(0), Gfinal(0), G(0) {}
+    Node(): Gp(-1), Gmid(-1), Gfinal(-1), G(-1) {}
+};
+
+char id[21]; // 多一个字节存储'\0'。
+
+unordered_map<string, int> idx; // 记录id对应的结构体在数组中的下标。
+
+// 从1开始存储，因为map创建的pair的int类型的value部分值初始化为0。
+Node a[30001];
+
+bool cmp(const Node& a, const Node& b) {
+    if (a.G != b.G) return a.G>b.G;
+    return a.id<b.id;
+}
+
+// to be qualified for a certificate, he/she must first obtain no less than 200 points
+// from the online programming assignments, and then receive a final grade no less than 60 out of 100.
+int main() {
+    int P, N, M, i, n=1, x;
+    scanf("%d %d %d", &P, &M, &N);
+    for (i=0; i<P; i++) {
+        scanf("%s %d", id, &x);
+        if (x < 200)
+            continue;
+        a[n].id = id;
+        a[n].Gp = x;
+        idx[string(id)] = n;
+        n++;
+    }
+    for (i=0; i<M; i++) {
+        scanf("%s %d", id, &x);
+        if (idx[string(id)] == 0)
+            continue;
+        a[idx[string(id)]].Gmid = x;
+    }
+    for (i=0; i<N; i++) {
+        scanf("%s %d", id, &x);
+        // 这里并没有像第一个循环那样在这里检测期末成绩是否符合标准，不符合则不插入/更新。
+        // 因为可能不符合，但这个记录已经在数组中了，删除它会比较麻烦，所以干脆只更新/插入，
+        // 等到输出时再排除不符合的结点。（不在排序时，因为这也比较麻烦）
+        if (idx[string(id)] == 0)
+            continue;
+        a[idx[string(id)]].Gfinal = x;
+    }
+    // 计算出最终成绩。
+    for (i=0; i<n; i++) {
+        if (a[i].Gmid<=a[i].Gfinal && a[i].Gfinal!=-1) {
+            a[i].G = a[i].Gfinal;
+        } else {
+            // XXX G must be rounded up to an integer.
+            a[i].G = (int)(a[i].Gmid*0.4 + a[i].Gfinal*0.6 + 0.5);
+        }
+    }
+    sort(a, a+n, cmp);
+    for (i=0; i<n; i++) {
+        if (a[i].Gp<200 || a[i].G<60) // 过滤不合格的记录。
+            continue;
+        printf("%s %d %d %d %d\n", a[i].id.c_str(), a[i].Gp, a[i].Gmid, a[i].Gfinal, a[i].G);
+    }
+}
+```
+
+
+## 1138 Postorder Traversal (25 分)
+
+1. 给出先序和中序序列，要求打印后序序列的第一个数字，显然，后序序列的第一个数字是树的最下面的左叶子，如果没有左叶子的话，就是右叶子。
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+vector<int> pre, in;
+
+int postOrder(int pStart, int iStart, int len) {
+    // printf("%d %d %d\n", pStart, iStart, len);
+    if (len == 0) {
+        return -1; // 没有左叶子。
+    }
+    if (len == 1) {
+        printf("%d\n", pre[pStart]);
+        return 1; // 已打印了第一个数字。
+    }
+    int root = pre[pStart];
+    int i;
+    for (i=iStart; i<iStart+len && in[i]!=root; i++)
+        ;
+    int leftSubLen = i-iStart;
+    int rightSubLen = len - 1 - leftSubLen;
+    int x = postOrder(pStart+1, iStart, leftSubLen);
+    if (x == -1) {
+        postOrder(pStart+1+leftSubLen, i+1, rightSubLen);
+    }
+    return 1; // 第一个数字在最底下的叶子处，所以在这里（当前结点有左叶子或右叶子，且位于递归的次底层）返回时，第一个数字一定已被打印。
+}
+
+int main() {
+    int N, i;
+    scanf("%d", &N);
+    pre.resize(N);
+    in.resize(N);
+    for (i=0; i<N; i++)
+        scanf("%d", &pre[i]);
+    for (i=0; i<N; i++)
+        scanf("%d", &in[i]);
+    postOrder(0, 0, N);
+}
+```
+
+
+## 1139 First Contact (30 分)
+
+1. 递归时，提前判断，优化一下，避免超时。
+2. 注意，要排除掉src的相邻结点就是dst或dst的相邻结点就是src的情况。
+3. 第二份代码是比较巧妙的。其实深入理解的话，会发现这道题不需要bfs，因为题目限定了src到dst之间有且仅有中间结点，那么我们不必从src递推路径到dst，而可以用双重循环，遍历src的相邻结点和dst的相邻结点，再判断这两个相邻结点是否相连即可。
+4. 因为要判断两个结点是否相连，如果是邻接表，需要O(n)复杂度，所以可以另外再用一个邻接矩阵存储每两个结点的连通性。
+5. 多次查询，记得每次查询重置一些变量，避免影响到下一次查询。
+
+```cpp
+// 提前判断，优化一下，避免超时。
+// if ((n==2) || (n==0&&x!=src&&sameGender(x, src)) || (n==1&&x!=dst&&sameGender(x, dst))) {
+// XXX 对于最后一个测试，上面的判断语句需要大概200ms，而下面的判断语句需要大概100ms，如果没有这些判断，直接进入递归后再判断，就会超时。
+if ((n==2&&x==dst) || (n==0&&x!=src&&sameGender(x, src)) || (n==1&&x!=dst&&sameGender(x, dst))) {
+```
+
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <unordered_map>
+#include <set>
+using namespace std;
+
+bool isBoy(int absID) {
+    return absID>10000;
+}
+
+bool isGirl(int absID) {
+    return !isBoy(absID);
+}
+
+bool sameGender(int absID1, int absID2) {
+    if ((absID1>10000&&absID2<10000) || (absID1<10000&&absID2>10000))
+        return false;
+    return true;
+}
+
+int absID(int id) {
+    return id+10000; // id有四位数。
+}
+
+int realID(int id)  {
+    if (isBoy(id))
+        return id-10000;
+    return -(id-10000);
+}
+
+struct Node {
+    int x, y;
+    Node(int x_, int y_): x(x_), y(y_) {}
+    bool operator<(const Node& rhs) const {
+        if (x != rhs.x) return x<rhs.x;
+        return y<rhs.y;
+    } 
+};
+
+set<Node> result;
+
+// 没有边权，输入的数据可确定一个结点关联的所有结点，可用邻接表存储，节省空间。
+unordered_map<int, vector<int>> graph;
+
+bool visited[20000];
+
+vector<int> temp;
+
+int src, dst;
+
+void dfs(int v, int n) {
+    if (v==dst && n==3) {
+        // if (sameGender(src, temp[0]) && sameGender(dst, temp[1]))
+            result.insert(Node(realID(temp[0]), realID(temp[1])));
+        return;
+    }
+    if (v==dst || n==3)
+        return;
+    visited[v] = true;
+    for (int x: graph[v]) {
+        if (!visited[x]) {
+            // 提前判断，优化一下，避免超时。
+			// if ((n==2) || (n==0&&x!=src&&sameGender(x, src)) || (n==1&&x!=dst&&sameGender(x, dst))) {
+			// XXX 对于最后一个测试，上面的判断语句需要大概200ms，而下面的判断语句需要大概100ms。
+            if ((n==2&&x==dst) || (n==0&&x!=src&&sameGender(x, src)) || (n==1&&x!=dst&&sameGender(x, dst))) {
+                temp.push_back(x);
+                dfs(x, n+1);
+                temp.pop_back();
+            }
+        }
+    }
+    visited[v] = false;
+}
+
+int main() {
+    int N, M, i, x, y, K;
+    scanf("%d %d", &N, &M);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &x, &y);
+        graph[absID(x)].push_back(absID(y)); // value部分会值初始化为空vector。
+        graph[absID(y)].push_back(absID(x));
+    }
+    scanf("%d", &K);
+    while (K--) {
+        result.clear(); // 多次查询，记得每次查询重置一些变量，避免影响到下一次查询。
+        scanf("%d %d", &src, &dst);
+        src = absID(src);
+        dst = absID(dst);
+        dfs(src, 0);
+        printf("%d\n", result.size());
+        for (auto it=result.begin(); it!=result.end(); it++)
+            printf("%04d %04d\n", it->x, it->y);
+    }
+}
+```
+
+```cpp
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <unordered_map>
+using namespace std;
+unordered_map<int, bool> arr;
+struct node {
+    int a, b;
+};
+bool cmp(node x, node y) {
+    return x.a != y.a ? x.a < y.a : x.b < y.b;
+}
+int main() {
+    int n, m, k;
+    scanf("%d%d", &n, &m);
+    vector<int> v[10000];
+    for (int i = 0; i < m; i++) {
+        string a, b;
+        cin >> a >> b;
+        if (a.length() == b.length()) { // XXX 因为这个算法的特点，所以只存储同性的邻接结点。
+            v[abs(stoi(a))].push_back(abs(stoi(b)));
+            v[abs(stoi(b))].push_back(abs(stoi(a)));
+        }
+        arr[abs(stoi(a)) * 10000 + abs(stoi(b))] = arr[abs(stoi(b)) * 10000 + abs(stoi(a))] = true;
+    }
+    scanf("%d", &k);
+    for (int i = 0; i < k; i++) {
+        int c, d;
+        cin >> c >> d;
+        vector<node> ans;
+        for (int j = 0; j < v[abs(c)].size(); j++) {
+            for (int k = 0; k < v[abs(d)].size(); k++) {
+                if (v[abs(c)][j] == abs(d) || abs(c) == v[abs(d)][k]) continue;
+                if (arr[v[abs(c)][j] * 10000 + v[abs(d)][k]] == true)
+                    ans.push_back(node{v[abs(c)][j], v[abs(d)][k]});
+            }
+        }
+        sort(ans.begin(), ans.end(), cmp);
+        printf("%d\n", int(ans.size()));
+        for(int j = 0; j < ans.size(); j++)
+            printf("%04d %04d\n", ans[j].a, ans[j].b);
+    }
+    return 0;
+}
+```
+
+
+## 1140 Look-and-say Sequence (20 分)
+
+```cpp
+#include <iostream>
+#include <string>
+#include <vector>
+using namespace std;
+
+int main() {
+    int n, i, j, num;
+    char c;
+    cin >> num >> n;
+    vector<char> num1, num2;
+    num1.push_back(num+'0');
+    while (--n) {
+        for (i=0; i<num1.size(); ) {
+            for (j=i+1; j<num1.size() && num1[j]==num1[i]; j++)
+                ;
+            num2.push_back(num1[i]);
+            num2.push_back(j-i+'0');
+            i = j;
+        }
+        num1 = num2;
+        num2.clear();
+    }
+    /*
+    for (char c: num1)
+        printf("%c", c);
+    */
+    cout << string(num1.begin(), num1.end()) << endl;
+}
+```
+

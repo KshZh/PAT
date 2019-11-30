@@ -1,0 +1,1142 @@
+## 1002 A+B for Polynomials (25 分)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    float p[1001] = {0}; // 题目中指数的范围较小，且为整数，所以可以用指数作为下标，值为系数。
+    int i, j, k;
+    float x;
+    cin >> k;
+    for (i=0; i<k; i++) {
+        cin >> j >> x;
+        p[j] += x; // +=，自动合并输入中多个指数相同的项。
+    }
+    cin >> k;
+    for (i=0; i<k; i++) {
+        cin >> j >> x;
+        p[j] += x;
+    }
+    k = 0;
+    for (i=0; i<1001; i++) {
+        if (p[i] != 0.0)
+            k++;
+    }
+    cout << k;
+    for (i=1000; i>=0; i--) {
+        // 从次数大的开始输出。
+        if (p[i] != 0.0) {
+            // 过滤了系数相加为0的项。
+            printf(" %d %.1f", i, p[i]);
+        }
+    }
+    cout << endl;
+    return 0;
+}
+```
+
+
+## 1009 Product of Polynomials (25 分)
+
+1. 多项式乘法，双层循环，**以指数为下标，这样很自然可以合并指数相同的项**。
+2. 只需存一个多项式，第二个多项式边输入边处理。
+3. 如果累加后，系数为0，要更新项数。
+
+```cpp
+#include <iostream>
+#include <cstdio>
+using namespace std;
+
+// 注意，不能把乘积的结果写入p中。
+float p[1001];
+float r[2001];
+
+int main() {
+    int n, i, j, m; // m存放结果多项式的项数。
+    float x;
+    cin >> n;
+    for (i=0; i<n; i++) {
+        cin >> j >> x;
+        p[j] = x;
+    }
+    cin >> n;
+    m = 0;
+    while (n--) {
+        cin >> j >> x;
+        for (i=0; i<1001; i++) {
+            if (p[i] != 0.0) {
+                if (r[j+i] == 0.0)
+                    m++; // 新的项。
+                // r[j+i] = p[i]*x;   // 注意要累加，而不是赋值，覆盖。
+                r[j+i] += p[i]*x;    
+                // 注意，如果累加后，系数为0，要更新项数。
+                if (r[j+i] == 0.0)
+                    m--;
+            }
+        }
+    }
+    printf("%d", m);
+    // 从高次项开始输出。
+    for (i=2000; i>=0; i--) {
+        if (r[i] != 0.0) {
+            printf(" %d %.1f", i, r[i]);
+            if (--m == 0)
+                break;
+        }
+    }
+    printf("\n");
+}
+```
+
+
+## 1010 Radix (25 分)
+
+1. 单调有序，确定左右端点，二分搜索，代替遍历。
+2. 这道题可以加深对进制的理解。
+3. 可能会疑惑，最大的一个digit是'z'，那大于36进制怎么表示一个digit？其实还是可以表示的，不过要把一组digit看成一个digit。比如如果没有f，那么16进制就是把4位二进制digit看成一个digit。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+using LL = long long;
+
+// 原本只需要36个LL即可，但这里直接用字符的ascii码来index，以空间换时间，同时也简洁一点。
+LL nums[256];
+
+void init() {
+    char c;
+    for (c='0'; c<='9'; c++)
+        nums[c] = c - '0';
+    for (c='a'; c<='z'; c++)
+        nums[c] = c - 'a' + 10;
+}
+
+// 按进制radix将s转换为数字。
+LL s2l(const string &s, LL radix) {
+    LL r = 0;
+    for (char c: s)
+        r = r*radix + nums[c];
+    return r;
+}
+
+LL binarySearch(const string &s, LL left, LL right, LL target) {
+    // 二分查找，代替遍历，O(logn)。
+    LL mid, midNum;
+    while (left <= right) {
+        mid = (left+right)/2;
+        midNum = s2l(s, mid);
+        // midNum = stoll(s, 0, mid); // 用标准库的stoll，当溢出时会抛出异常。
+        // 关键：注意`midNum<0`，这时就要减小二分查找的上界了。溢出了？
+        if (midNum < 0 || midNum > target) right = mid - 1;
+        else if (midNum < target) left = mid + 1;
+        else return mid;
+    }
+    return -1;
+}
+
+int minRadix(const string &s){
+    int r = -1;
+    for (char c: s) {
+        if(nums[c] > r)
+            r = nums[c];
+    }
+    return r+1; // s的最小进制，要加一，因为8进制最大的数是7，16进制最大的数是15。
+}
+
+int main() {
+    init();
+    // 由于输入可能是16进制，包含字母，所以用字符串存储。
+    string N1, N2, N;
+    int tag;
+    LL n, radix, r, left, right;
+    cin >> N1 >> N2 >> tag >> radix;
+    // A digit is less than its radix and is chosen from the set { 0-9, a-z }
+    // where 0-9 represent the decimal numbers 0-9, and a-z represent the decimal numbers 10-35.
+    //
+    // If the equation is impossible, print Impossible. If the solution is not unique, output the smallest possible radix.
+    N = tag==1? N1: N2;
+    n = s2l(N, radix);
+    N = tag==1? N2: N1;
+    left = minRadix(N); // 输入A的最小进制必定为其最大的位数加1，否则就无法表示输入A。
+    right = n + 1; // 输入A的最大进制可以是n+1，表示输入A是“一位数”，这一位数与输入B相等。
+    r = binarySearch(N, left, right, n);
+    if (r == -1)
+        cout << "Impossible" << endl;
+    else
+        cout << r << endl;
+}
+```
+
+
+## 1015 Reversible Primes (20 分)
+
+```cpp
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+bool isPrime(int n){
+    if(n <= 1)
+        return false;
+    int x = (int)sqrt(1.0 * n);
+    for(int i=2; i<=x; i++) {
+        if(n % i == 0)
+            return false;
+    }
+    return true;
+}
+
+int main() {
+    int x, y, radix;
+    while (true) {
+        scanf("%d", &x);
+        if (x < 0)
+            break;
+        scanf("%d", &radix);
+        if (!isPrime(x))
+            printf("No\n");
+        else {
+            y = 0;
+            while (x) {
+                y = y*radix + x%radix;
+                x /= radix;
+            }
+            if (isPrime(y))
+                printf("Yes\n");
+            else
+                printf("No\n");
+        }
+    }
+}
+```
+
+
+## 1019 General Palindromic Number (20 分)
+
+1. 最大的输入是10^9，int正数最大为2^31-1，由于2^10可近似等于10^3，故可以用int存储。
+2. 可以反转字符串/将反转后的digit存到vector中，循环，看两半是否相等。
+3. 也可以反转到一个数字中去，然后比较两个数是否相等。但是**可能反转后会溢出**，所以尽可能还是采用上面的方法。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+int N, b;
+
+int main() {
+    scanf("%d %d", &N, &b);
+    if (N < b) {
+        printf("Yes\n%d\n", N);
+        return 0;
+    }
+    int x = 0;
+    vector<int> v;
+    while (N) {
+        v.push_back(N%b);
+        N /= b;
+    }
+    bool flag = true;
+    for (int i=0; i<v.size()/2; i++) {
+        if (v[i] != v[v.size()-1-i]) {
+            flag = false;
+            break;
+        }
+    }
+    if (flag)
+        printf("Yes\n");
+    else
+        printf("No\n");
+    printf("%d", v[v.size()-1]);
+    for (int i=v.size()-2; i>=0; i--)
+        printf(" %d", v[i]);
+    printf("\n");
+}
+```
+
+
+## 1023 Have Fun with Numbers (20 分)
+
+1. 记得处理最高位的进位。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+// 输入的数最多20位，int放不下，long也不行。
+string x;
+int carry = 0, y, i;
+bool flag = true;
+
+int a[10]; // 0-9每个数字都对应一个计数器。
+
+vector<int> v;
+
+int main() {
+    cin >> x;
+    // 模拟乘2的过程。
+    for (i=x.size()-1; i>=0; i--) {
+        a[x[i]-'0']++; // 输入x中出现数字x[i]-'0'，递增x[i]-'0'的计数器。
+
+        y = (x[i]-'0')*2 + carry;
+        carry = y>9? 1: 0; // 进位只可能是1或0，不可能是2或更大。
+        y = y%10; // 一位数%10还是得到这一位数。
+
+        a[y]--; // 乘2结果中会出现数字y，递减y的计数器。
+        v.push_back(y);
+    }
+    // XXX 记得处理最高位的进位。
+    if (carry) {
+        v.push_back(carry);
+        a[carry]--;
+    }
+    for (i=0; i<10; i++) {
+        if (a[i] != 0) {
+            flag = false;
+            break;
+        }
+    }
+    if (flag)
+        printf("Yes\n");
+    else
+        printf("No\n");
+    for (i=v.size()-1; i>=0; i--) {
+        printf("%d", v[i]);
+    }
+    printf("\n");
+}
+```
+
+
+## 1024 Palindromic Number (25 分)
+
+1. 题目给出的N的最大值是10^10，显然无法用int表示，虽然可以用long long表示，但多次加法可能还是会导致溢出。我们还是将其作为字符串输入，通过借助std::reverse，可以很容易得到该字符串的逆序字符串。
+2. std::reverse。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+int K, i, j, n, carry;
+string N, x;
+
+int main() {
+    cin >> N >> K;
+    for (i=0; i<K; i++) {
+        x = N;
+        reverse(x.begin(), x.end());
+        if (x == N) {
+            cout << N << endl << i << endl;
+            return 0;
+        }
+        n = N.size();
+        carry = 0;
+        for (j=n-1; j>=0; j--) {
+            N[j] = N[j] + x[j] + carry - '0';
+            carry = 0;
+            if (N[j] > '9') {
+                N[j] -= 10;
+                carry = 1;
+            }
+        }
+        // XXX 记得处理进位。
+        if (carry) N = "1" + N;
+        /*
+        flag = true;
+        // 不采用这种算法，因为该算法只是判断了是否为回文数，无法产出它的逆序数，如果不是回文数，我们也需要这个逆序数。
+        for (j=0; j<n/2; j++) {
+            if (N[j] != N[n-1-j])
+                flag = false;
+        }
+        */
+    }
+    cout << N << endl << K << endl;
+}
+```
+
+
+## 1027 Colors in Mars (20 分)
+
+1. 进制转换，从十进制转换到13进制，除13取余法。
+2. 由于确定转换后的结果只有两位，所以不需要用循环。
+3. 因为有'A'这样的字符，所以需要查表。
+4. 如果小写不行，试着用大写。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int a, b, c;
+
+int a1, a2, b1, b2, c1, c2;
+
+char x[13] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C'};
+
+int main() {
+    scanf("%d %d %d", &a, &b, &c);
+    a1 = a%13;
+    a /= 13; // 整数除法。
+    a2 = a%13;
+    b1 = b%13;
+    b /= 13;
+    b2 = b%13;
+    c1 = c%13;
+    c /= 13;
+    c2 = c%13;
+    printf("#%c%c%c%c%c%c\n", x[a2], x[a1], x[b2], x[b1], x[c2], x[c1]);
+}
+```
+
+
+## 1029 Median (25 分)
+
+1. 注意到添加了哨兵后，使得循环不必判断边界条件（即其中一个序列很短）。
+2. 注意考虑其中一个序列长度为0的情况下，算法是否还能工作。
+3. 求中位数的下标，如长度3的序列和长度4的序列，其合并递增序列的中位数的下标为(3+4-1)/2=3，再如4、6，其合并序列的中位数下标为(4+6-1)/2=4。
+5. 如果出现内存不足，那可以考虑**只存储第一个输入序列，第二个输入序列不存储，边输入边处理**。
+
+```cpp
+#include <iostream>
+#include <climits>
+using namespace std;
+
+int N1, N2;
+
+long a[200001], b[200001];
+
+int main() {
+    int i, j, k, p;
+    scanf("%d", &N1);
+    for (i=0; i<N1; i++) {
+        scanf("%ld", a+i);
+    }
+    a[i] = INT_MAX; // 哨兵。
+    scanf("%d", &N2);
+    for (i=0; i<N2; i++) {
+        scanf("%ld", b+i);
+    }
+    b[i] = INT_MAX; // 哨兵。
+    // 并不需要真的合并递增序列a和b，然后排序一下，或者在合并过程中维持有序。
+    // 只需要用双指针walk一下a和b即可。
+    for (i=j=k=0; k<=(N1+N2-1)/2; k++) {
+        if (a[i] < b[j]) {
+            p = i;
+            i++;
+        } else {
+            // b[j] <= a[i]
+            p = j;
+            j++;
+        }
+    }
+    if (p == i-1)
+        printf("%ld\n", a[p]);
+    else
+        printf("%ld\n", b[p]);
+}
+```
+
+
+## 1031 Hello World for U (20 分)
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+string s, space;
+
+int main() {
+    int N, n1, n2, n3, i, k, maxK;
+    cin >> s;
+    N = s.size();
+    // n1 = n3 = max{k | k<=n2 for all 3<=n2<=N} with n1+n2+n3-2=N，减2是横竖交点重叠了。
+    maxK = -1;
+    for (n2=3; n2<=N; n2++) {
+        k = (N+2-n2)/2;
+        if (k<=n2 && k>maxK)
+            maxK = k;
+    }
+    n1 = n3 = maxK;
+    n2 = N+2-n1-n3;
+    // 先组装出一个空白字符串，这样后面可以直接打印，而不必每次都循环打印空格。
+    for (i=0; i<n2-2; i++) {
+        space += ' ';
+    }
+    for (i=0; i<n1-1; i++) {
+        printf("%c%s%c\n", s[i], space.c_str(), s[N-1-i]);
+    }
+    printf("%c", s[i]);
+    for (i=n1; i<n1+n2-1; i++) {
+        printf("%c", s[i]);
+    }
+}
+```
+
+
+## 1038 Recover the Smallest Number (30 分)
+
+1. 输入一组数，求这组数的组合得到的最小的数。
+2. std::string的比较操作符。
+3. 排序比较操作的设计。
+
+```cpp
+#include <iostream>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+int N;
+
+string s[10001], result;
+
+// 不是按照字典序排列就可以的，必须保证两个字符串构成的数字是最小的才行，
+// 所以cmp函数写成return a + b < b + a;的形式，保证它排列按照能够组成的最小数字的形式排列。
+auto cmp = [](const string& a, const string& b){ return a+b<b+a; }; // 调用了std::string的比较操作符。
+
+int main() {
+    int i;
+    cin >> N;
+    for (i=0; i<N; i++)
+        cin >> s[i];
+    sort(s, s+N, cmp);
+    for (i=0; i<N; i++)
+        result += s[i];
+    while (result.size()!=0 && result[0]=='0') // 跳过前导零。可能不止一个零，所以要用循环。
+        result.erase(result.begin()); // 用erase()删除指定位置的元素。
+    if (result.size() == 0) cout << 0 << endl;
+    else cout << result << endl;
+}
+```
+
+
+## 1049 Counting Ones (30 分)
+
+1. 抹去低位、留下高位，一般想到除法/右移；抹掉高位、留下低位，一般考虑模运算。
+2. https://www.liuchuo.net/archives/2305
+
+对于now，有三种情况：
+1.now == 0 : 那么 ans += left * a; // 因为now==0说明now位只有在left从0~left-1的时候会产生1，所以会产生left次，now每一次出现1，右边会重复从0~999…出现a次（如a=10，则0, 1, 2, 3, 4, 5, 6, 7, 8, 9共10次，10次now为1）
+2.now == 1 : ans += left * a + right + 1;// now = 1的时候就要比上一步多加一个当now为1的时候右边出现0~right个数导致的now为1的次数
+3.now >= 2 : ans += (left + 1) * a;// now大于等于2就左边0~left的时候会在now位置产生1，所以会产生left+1次，右边会重复从0~999…出现a次（第a次重复到999…后会进位使得now变为2）
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int n, left = 0, right = 0, a = 1, now = 1, ans = 0;
+    scanf("%d", &n);
+    while(n / a) { // 如果还有高位的话，
+        left = n / (a * 10), now = n / a % 10, right = n % a;
+        if(now == 0) ans += left * a;
+        else if(now == 1) ans += left * a + right + 1;
+        else ans += (left + 1) * a;
+        a = a * 10;
+    }
+    printf("%d", ans);
+    return 0;
+}
+```
+
+
+## 1059 Prime Factors (25 分)
+
+1. sqrt，<cmath>
+2. 考虑边界情况，算法失效的情况。
+3. 先整理出一定范围内的质数，然后再从小到大遍历质数，如果一个质数是输入的因子，那么就让输入不断整除该质数，当无法整除时，寻找下一个质因子。
+
+```cpp
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+const int maxn = 100010;
+
+struct PrimeFactor {
+    int factor;
+    int exponent;
+};
+
+PrimeFactor fac[10];
+
+int prime[maxn], np=0;
+
+bool isPrime(int x) {
+    if (x <= 1) return false;
+    int sqrt_ = sqrt(x*1.0);
+    for (int i=2; i<=sqrt_; i++) { // `<=`
+        if (x%i == 0)
+            return false;
+    }
+    return true;
+}
+
+void getPrime(int n) {
+    for (int i=2; i<n; i++) {
+        if (isPrime(i))
+            prime[np++] = i;
+    }
+}
+
+int getFactor(int N) {
+    int remain=N, count=0;
+    int sqrt_ = sqrt(N*1.0);
+    for (int i=0; i<np && prime[i]<=sqrt_; i++) {
+        if (remain%prime[i] != 0) continue;
+        fac[count].factor = prime[i];
+        while (remain%prime[i] == 0) {
+            fac[count].exponent++;
+            remain /= prime[i]; // 除法使得remain不会为0。
+        }
+        count++;
+        if (remain == 1) break;
+    }
+
+	// 注意处理常系数。
+    if (remain > 1) {
+        fac[count].factor = remain;
+        fac[count++].exponent = 1;
+    }
+    return count;
+}
+
+int N;
+
+int main() {
+    getPrime(maxn);
+    scanf("%d", &N);
+    if (N == 1) { // 当N==1时，算法会失效，直接返回。
+        printf("1=1\n");
+        return 0;
+    }
+    int nfac = getFactor(N);
+    int i;
+    printf("%d=", N);
+    for (i=0; i<nfac-1; i++) {
+        if (fac[i].exponent == 1) printf("%d*", fac[i].factor);
+        else printf("%d^%d*", fac[i].factor, fac[i].exponent);
+    }
+    if (fac[i].exponent == 1) printf("%d\n", fac[i].factor);
+    else printf("%d^%d\n", fac[i].factor, fac[i].exponent);
+}
+```
+
+
+## 1063 Set Similarity (25 分)
+
+1. 相似度=Nc/Nt。
+2. 先让Nt为其中一个setA的大小，然后遍历另一个setB，出现setA中没有的元素，则`Nt++`，否则`Nc++`。
+
+3
+3 99 87 101
+4 87 101 5 87
+7 99 101 18 5 135 18 99
+2
+1 2 // 50.0%
+1 3 // 33.3%
+
+```cpp
+#include <set>
+#include <iostream>
+using namespace std;
+
+int N, M, K, i, j, x, y, Nc, Nt;
+
+set<int> s[50]; 
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d", &M);
+        for (j=0; j<M; j++) {
+            scanf("%d", &x);
+            s[i].insert(x); // set容器自动过滤重复的元素。
+        }
+    }
+    scanf("%d", &K);
+    for (i=0; i<K; i++) {
+        scanf("%d %d", &x, &y);
+        x--;
+        y--; // 输入是从1开始的，转换为set的下标。
+        Nc = 0;
+        Nt = s[y].size(); // 先让Nt为其中一个setA的大小，然后遍历另一个setB，出现setA中没有的元素，则`Nt++`，否则`Nc++`。
+        for (int e: s[x]) {
+            if (s[y].find(e) != s[y].end())
+                Nc++;
+            else
+                Nt++;
+        }
+        double r = double(Nc)/Nt*100;
+        printf("%.1f%%\n", r); // 注意%是特殊字符，要打印%，则要%%。
+    }
+}
+```
+
+
+## 1065 A+B and C (64bit) (20 分)
+
+1. 给出三个64bit的有符号数A, B, C，看是否`A+B>C`。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+long long int a, b, c, r; // long可能是32位，所以为了保险，用long long。
+
+int N, i;
+
+int main() {
+    scanf("%d", &N);
+    // for (i=0; i<N; i++) { // 注意输出格式，测试序号是从1开始的。
+    for (i=1; i<=N; i++) {
+        scanf("%lld %lld %lld", &a, &b, &c);
+        r = a+b;
+        if (a>0 && b>0 && a+b<0) // 同号且溢出，真实结果是正数，肯定比64位有符号数C大。
+            printf("Case #%d: true\n", i);
+        else if (a<0 && b<0 && a+b>=0) // 同号且溢出，真实结果是很小的负数，肯定比C小。
+            printf("Case #%d: false\n", i);
+        else if (a+b > c) // 同号不溢出或异号不溢出。
+            printf("Case #%d: true\n", i);
+        else
+            printf("Case #%d: false\n", i);
+    }
+}
+```
+
+
+## 1069 The Black Hole of Numbers (20 分)
+
+1. 注意，每一轮循环都要检查N!=0，不能只在第一次检查，因为后面计算过程中，有可能减法得到一个4个数位都相等的数。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int N, i;
+
+int digits[4]; // 4个位数单独存储，方便排序。
+
+bool cmp2(int a, int b) {
+    return a > b;
+}
+
+// 获得x的升序数和降序数。
+pair<int, int> getNum(int x) {
+    pair<int, int> p{0, 0};
+    for (i=0; i<4; i++, x/=10) // 这里并没有使当x为0时退出，而是填满4个数字，若x为0，则填充0。
+        digits[i] = x%10;
+    sort(digits, digits+4, cmp2);
+    for (i=0; i<4; i++)
+        p.first = p.first*10 + digits[i];
+    // sort(digits, digits+4, cmp1); // XXX 排一次就够了，然后循环顺序遍历，或逆序遍历。
+    for (i=3; i>=0; i--)
+        p.second = p.second*10 + digits[i];
+    return p;
+}
+
+int main() {
+    scanf("%d", &N);
+    pair<int, int> p;
+    do {
+        p = getNum(N);
+        N = p.first - p.second;
+        printf("%04d - %04d = %04d\n", p.first, p.second, N);
+    } while (N!=6174 && N!=0);
+}
+```
+
+
+## 1081 Rational Sum (20 分)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+long int N;
+
+long int gcd(long int a, long int b) {
+    if (b == 0) // 余数r或b为0时，返回a。
+        return a;
+    return gcd(b, a%b);
+}
+
+struct Rational {
+    long int numerator, denominator;
+    Rational(): numerator(0), denominator(1) {}
+};
+
+void operator+=(Rational& a, Rational& b) {
+    a.numerator = a.numerator*b.denominator + b.numerator*a.denominator;
+    a.denominator = a.denominator*b.denominator;
+    long int g = gcd(abs(a.numerator), abs(a.denominator));
+    if (a.denominator < 0) g = -g;
+	// 让g和d的符号相同，这样下面的除法就会把d的负号转移给n，如果有的话。
+    a.numerator /= g;
+    a.denominator /= g;
+}
+
+int main() {
+    int i, j;
+    scanf("%ld", &N);
+    Rational sum, r;
+    scanf("%ld/%ld", &sum.numerator, &sum.denominator);
+    while (--N) {
+        scanf("%ld/%ld", &r.numerator, &r.denominator);
+        sum += r;
+    }
+    if (sum.numerator == 0) {
+        printf("0\n");
+    } else if (sum.numerator%sum.denominator == 0) {
+        printf("%ld\n", sum.numerator/sum.denominator);
+    } else if (sum.numerator < sum.denominator) {
+        printf("%ld/%ld\n", sum.numerator, sum.denominator);
+    } else {
+        printf("%ld %ld/%ld\n", sum.numerator/sum.denominator, sum.numerator%sum.denominator, sum.denominator);
+    }
+}
+```
+
+
+## 1085 Perfect Sequence (25 分)
+
+1. 先给无序数组排序。
+2. 有序 =》二分查找。
+3. 遇到公式不要慌，好好分析一下有几个变量，确定一个，另外那些是否能确定。
+4. 要乘法不溢出，除了要用更大的类型存储结果外，还要改变操作数的类型。或者一开始就都用比较大的类型存储。
+
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <climits>
+using namespace std;
+
+int a[100000];
+
+int N, p;
+
+long M; // XXX 乘法可能溢出，要用更大的类型存储。
+
+int main() {
+    int i, maxLen = INT_MIN, l, r, mid;
+    scanf("%d %d", &N, &p);
+    for (i=0; i<N; i++)
+        scanf("%d", a+i);
+    sort(a, a+N); // 先将无序序列排序成有序升序序列。
+    // m确定了，根据M<=p*m，那么M的最大值也就确定了。
+    for (i=0; i<N; i++) {
+    // 遍历m，找到M，即找到最后一个小于等于p*m的数，
+    // 也就是找到第一个大于p*m的数，upper_bound()，然后该数前面的那个数就是我们要找的。
+        M = (long)p*a[i];
+        l = i;
+        r = N; // 查找区间是[l, r)。
+        while (l < r) {
+            mid = (l+r)/2;
+            if (a[mid] > M)
+                r = mid; // 暂存结果，但或许不是第一个，缩小范围继续找，找到第一个。
+            else
+                l = mid+1;
+        }
+        maxLen = max(maxLen, r-i); // 右开减左闭等于区间长度。
+    }
+    printf("%d\n", maxLen);
+}
+```
+
+
+## 1088 Rational Arithmetic (20 分)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+struct Rational {
+    long int n, d;
+    Rational(): n(0), d(1) {}
+};
+
+Rational r1, r2, r3;
+
+long int gcd(long int a, long int b) {
+    if (b == 0)
+        return a;
+    return gcd(b, a%b);
+}
+
+void foo(Rational& r) {
+    long int g = gcd(abs(r.n), abs(r.d));
+    // 让g和d的符号相同，这样下面的除法就会把d的负号转移给n，如果有的话。
+    if (r.d < 0) g = -g;
+    r.n /= g;
+    r.d /= g;
+    bool flag = r.n<0;
+    if (flag)
+        printf("(");
+    if (r.n%r.d == 0) {
+        // 只有整数部分。
+        printf("%ld", r.n/r.d);
+    } else if (abs(r.n) < r.d) {
+        // 只有小数部分。
+        printf("%ld/%ld", r.n, r.d);
+    } else {
+        // 两部分都有。
+        printf("%ld %ld/%ld", r.n/r.d, (flag? -r.n: r.n)%r.d, r.d);
+    }
+    if (flag)
+        printf(")");
+}
+
+int main() {
+    int i;
+    scanf("%ld/%ld %ld/%ld", &r1.n, &r1.d, &r2.n, &r2.d);
+
+    r3.n = r1.n*r2.d+r2.n*r1.d;
+    r3.d = r1.d*r2.d;
+    foo(r1);
+    printf(" + ");
+    foo(r2);
+    printf(" = ");
+    foo(r3);
+    printf("\n");
+
+    r3.n = r1.n*r2.d-r2.n*r1.d;
+    r3.d = r1.d*r2.d;
+    foo(r1);
+    printf(" - ");
+    foo(r2);
+    printf(" = ");
+    foo(r3);
+    printf("\n");
+
+    r3.n = r1.n*r2.n;
+    r3.d = r1.d*r2.d;
+    foo(r1);
+    printf(" * ");
+    foo(r2);
+    printf(" = ");
+    foo(r3);
+    printf("\n");
+
+    foo(r1);
+    printf(" / ");
+    foo(r2);
+    printf(" = ");
+    if (r2.n == 0) {
+        printf("Inf\n");
+    } else {
+        r3.n = r1.n*r2.d;
+        r3.d = r1.d*r2.n;
+        foo(r3);
+        printf("\n");
+    }
+}
+```
+
+
+## 1096 Consecutive Factors (20 分)
+
+1. 质数是特殊的输入，它的因子只有1和它本身，要确保算法对质数能正常工作。
+2. 1是特殊的因子，对于一个数的不同因子序列，都可以插入一个1。如果我们从1开始遍历，那么就会使得第一个“从1开始的”因子序列比其它“不从1开始的”因子序列长。所以应该排除它。
+3. 一串连续的数字只需要存储起点和长度即可，不需要用容器存储每一个数。
+4. 一个数的因子只可能在[2, sqrt(x)]范围内，还有特殊的1（最小因子）和它本身（最大因子），次大因子最大只可能是sqrt(x)。
+
+```cpp
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+// 1是特殊的因子，对于一个数的不同因子序列，都可以插入一个1。如果我们从1开始遍历，那么就会使得第一个“从1开始的”因子序列比其它“不从1开始的”因子序列长。所以应该排除它。
+// 质数是特殊的输入，它的因子只有1和它本身，要确保算法对质数能正常工作。
+
+int main() {
+    int N, n, i, j, cnt, max_=-1, start;
+    scanf("%d", &N);
+    int s = sqrt(N);
+	// 只需枚举左端点即可，每个因子使用一次，如果不连续了，枚举下一个左端点。
+    for (i=2; i<=s; i++) {
+        n = N;
+        cnt = 0;
+        for (j=i; n!=1; j++) {
+            if (n%j == 0) {
+                cnt++;
+                n /= j;
+            } else { // 因子不连续，break。
+                break;
+            }
+        }
+        if (cnt > max_) {
+            max_ = cnt;
+            start = j-max_; // 右开减区间长度等于左闭。
+        }
+    }
+    if (max_ <= 0) { // 这里是<=，当上面没有进入循环时，如输入是3，此时max_为-1。
+        printf("1\n%d\n", N);
+        return 0;
+    }
+    printf("%d\n%d", max_, start);
+    for (i=start+1; i<start+max_; i++)
+        printf("*%d", i);
+}
+```
+
+
+## 1136 A Delayed Palindrome (20 分)
+
+1. 大整数加法。
+2. 回文数。
+3. 最多一千位，但相加最高位可能进位，本来似乎分配1001位就可以了，但是不行，因为可能一个1001位的结果仍不是回文数，需要再做加法，最高位再次进位，故要分配多一些。
+4. 尽量不要用全局变量。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+struct BigInt {
+    int digits[1010]; // 最多一千位，但相加最高位可能进位，故要分配多一些。
+    int nDigits;
+    BigInt(int n): nDigits(n) {}
+    BigInt(const string& num): nDigits(num.size()) {
+        for (int i=nDigits-1, j=0; i>=0; i--, j++)
+            digits[j] = num[i]-'0';
+    }
+};
+
+void print(const BigInt& x) {
+    for (int i=x.nDigits-1; i>=0; i--)
+        printf("%d", x.digits[i]);
+}
+
+bool isPalindromic(const BigInt& x) {
+    for (int i=0; i<x.nDigits/2; i++) {
+        if (x.digits[i] != x.digits[x.nDigits-1-i])
+            return false;
+    }
+    return true;
+}
+
+// 大整数相加。
+BigInt add(BigInt& x) {
+    BigInt y(x.nDigits);
+    BigInt z(x.nDigits);
+    for (int i=0, j=x.nDigits-1; i<x.nDigits; i++, j--) {
+        y.digits[i] = x.digits[j];
+    }
+    int carry = 0, i;
+    for (i=0; i<x.nDigits; i++) {
+        z.digits[i] = x.digits[i]+y.digits[i]+carry;
+        if (z.digits[i] > 9) {
+            z.digits[i] -= 10;
+            carry = 1;
+        } else {
+            carry = 0;
+        }
+    }
+    // 处理最高位的进位。
+    if (carry) {
+        z.digits[i] = 1;
+        z.nDigits++;
+    }
+    print(x);
+    printf(" + ");
+    print(y);
+    printf(" = ");
+    print(z);
+    printf("\n");
+    return z;
+}
+
+
+int main() {
+    string num;
+    cin >> num;
+    BigInt x(num);
+    if (isPalindromic(x)) {
+        print(x);
+        printf(" is a palindromic number.\n");
+        return 0;
+    }
+    // 最多迭代10次。
+    for (int i=0; i<10; i++) {
+        BigInt z = add(x);
+        if (isPalindromic(z)) {
+            print(z);
+            printf(" is a palindromic number.\n");
+            return 0;
+        }
+        x = z;
+    }
+    printf("Not found in 10 iterations.\n");
+}
+```
+
+
+## 1152 Google Recruitment (20 分)
+
+1. 不足位要补零，所以还是直接输出子串吧。
+2. 当表格的利用率很低的时候，就没必要提前打表了。
+3. stoi, substr。
+
+```cpp
+#include <iostream>
+#include <unordered_set>
+#include <cmath>
+using namespace std;
+
+unordered_set<int> primes;
+
+bool isPrime(int x) {
+    int sq = sqrt(x);
+    for (int i=2; i<=sq; i++) {
+        if (x%i == 0)
+            return false;
+    }
+    return true;
+}
+
+int L, K, x;
+string num;
+
+void makeTable() {
+    // for (int i=2; i<1000000000; i++) {
+    // 缩小范围。
+    int end = pow(10, K);
+    // for (int i=pow(10, K-1); i<pow(10, K); i++) {
+    // 需要计算出低位的，因为可能有 XXX 前导0。
+    for (int i=2; i<pow(10, K); i++) {
+        if (isPrime(i))
+            primes.insert(i);
+    }
+}
+
+int main() {
+    scanf("%d %d", &L, &K);
+    // makeTable();
+    cin >> num;
+    for (int i=0; i+K<=num.size(); i++) {
+        x = stoi(num.substr(i, K));
+        // if (primes.find(x) != primes.end()) {
+		// 当表格的利用率很低的时候，就没必要提前打表了。
+        if (isPrime(x)) {
+            // printf("%d\n", x); // 不足位要补零，所以还是直接输出子串吧。
+            printf("%s\n", num.substr(i, K).c_str());
+            return 0;
+        }
+    }
+    printf("404\n");
+}
+```

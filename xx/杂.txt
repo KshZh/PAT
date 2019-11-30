@@ -1,0 +1,350 @@
+## 1092 To Buy or Not to Buy (20 分)
+
+```cpp
+#include <iostream>
+#include <unordered_map>
+using namespace std;
+
+unordered_map<char, int> count1, count2;
+
+string s1, s2;
+
+int i, nMiss;
+
+int main() {
+    cin >> s1 >> s2;
+    for (char c: s1)
+        count1[c]++; // 由于没有会创建pair，并值初始化，int会初始化为0，所以可以直接这么写。
+    for (char c: s2)
+        count2[c]++;
+    /*
+     * 这个遍历是不对的，遍历的对象不对，应该遍历count2，因为count2帮我们去重了。
+    for (char c: s2) {
+        if (count1[c] < count2[c])
+            nMiss += count2[c]-count1[c];
+    }
+    */
+    for (const auto& p: count2) {
+        if (count1[p.first] < p.second)
+            nMiss += p.second-count1[p.first];
+    }
+    if (nMiss)
+        printf("No %d\n", nMiss);
+    else
+        printf("Yes %d\n", s1.size()-s2.size());
+}
+```
+
+
+## 1093 Count PAT's (25 分)
+
+1. PAT的数量可以巧妙地认为是每个A的左边的P的数量乘以右边T的数量。 
+2. 用两个数组来记录每个位置左边P的数量和右边T的数量，在记录时，遍历到的位置为P或者T，其下一个位置的数量就为前一个的数量+1，否则和前一个位置的数量相同。 
+3. 注意题目中，output the result moded by 1000000007因为测试样例结果过大，需要将结果取模，但是如果是在最后取模，因为在中间过程已经越界，结果还是不对的，导致最后两个测试点过不去。**正确的做法应该是在遍历每个A的时候就取模，有效防止越界**。**每次都取模，防止溢出，而不是最后才取模，可能中间就溢出了**。
+4. 注意`ans += (p[i]*t[i])%1000000007;`和`ans = (ans+p[i]*t[i])%1000000007;`的区别。
+
+```
+#include <iostream>
+#include <string>
+using namespace std;
+
+long p[100000], t[100000];
+
+string s;
+
+int i;
+
+long ans;
+
+int main() {
+    cin >> s;
+    for (i=0; i<s.size()-1; i++) {
+        if (s[i] == 'P')
+            p[i+1] = p[i]+1;
+        else
+            p[i+1] = p[i];
+    }
+    for (i=s.size()-1; i>0; i--) {
+        if (s[i] == 'T')
+            t[i-1] = t[i]+1;
+        else
+            t[i-1] = t[i];
+    }
+    for (i=1; i<s.size()-1; i++) {
+        if (s[i] == 'A')
+            // ans += (p[i]*t[i])%1000000007;
+            ans = (ans+p[i]*t[i])%1000000007;
+    }
+    cout << ans << endl;
+}
+```
+
+
+## 1101 Quick Sort (25 分)
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <climits>
+using namespace std;
+
+int N, leftMax=INT_MIN, rightMin=INT_MAX; // 一定义马上初始化。
+
+bool flag;
+
+int a[100000], maxa[100000], mina[100000]; // maxa[i]存储元素a[i]左边最大的元素，mina[i]同理。
+
+vector<int> v;
+
+// 题目保证输入序列的元素两两不相等。
+// 一个元素要能作为主元，它必须大于其左边所有的元素，小于其右边所有的元素。
+// 而一个关键的点是，大于其左边所有的元素==大于其左边最大的元素，小于其右边所有的元素==小于其右边最小的元素。
+// 一个元素要能作为主元，它必须大于其左边最大的元素，小于其右边最小的元素。
+
+int main() {
+    int i, j;
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%d", a+i);
+    for (i=0; i<N; i++) {
+        maxa[i] = leftMax;
+        leftMax = max(leftMax, a[i]);
+    }
+    for (i=N-1; i>=0; i--) {
+        mina[i] = rightMin;
+        rightMin = min(rightMin, a[i]);
+    }
+    for (i=0; i<N; i++) {
+        if (a[i]>maxa[i] && a[i]<mina[i])
+            v.push_back(a[i]);
+    }
+    printf("%d\n", v.size());
+    if (!v.empty()) {
+        printf("%d", v[0]);
+        for (i=1; i<v.size(); i++)
+            printf(" %d", v[i]);
+    }
+    printf("\n");
+}
+```
+
+
+## 1104 Sum of Number Segments (20 分)
+
+1. 规律题，在数据量比较大的情况下，如果想不到好的算法，除了考虑缓存外，还可以试着找规律，没准就可以直接用数学公式计算出结果。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int N, i, j;
+
+double sum, thisSum;
+
+double a[100000];
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%lf", a+i);
+    /*
+    for (i=0; i<N; i++) {
+        for (j=0; j<=i; j++)
+            sum += a[j];
+    }
+    */
+    /*
+    for (i=0; i<N; i++) {
+        thisSum += a[i]; // cache，使得不必重新累加已经加过的元素。
+        sum += thisSum;
+    }
+    thisSum = sum;
+    for (i=0; i<N-1; i++) {
+        thisSum -= a[i]*(N-i);
+        sum += thisSum;
+    }
+    */
+    for (i=0; i<N; i++) {
+        sum += a[i]*(N-i)*(i+1); // 注意操作数的顺序，double类型的a[i]不能放到最右边。
+    }
+    printf("%.2lf\n", sum);
+}
+```
+
+
+## 1128 N Queens Puzzle (20 分)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+bool checked[1001]; // 行号从1开始。
+
+int N, i, K, j;
+
+int lineNO[1001];
+
+bool flag;
+
+// 题目保证皇后在不同列上，这里只需要检查是否在同一行上或对角线上。
+
+int main() {
+    scanf("%d", &K);
+    while (K--) {
+        scanf("%d", &N);
+        for (i=1; i<=N; i++)
+            scanf("%d", lineNO+i);
+        flag = true;
+        checked[lineNO[1]] = true;
+        for (i=2; flag && i<=N; i++) {
+            if (checked[lineNO[i]]) { // 两个皇后在同一行。
+                flag = false;
+            }
+            /*
+            if (abs(lineNO[i]-lineNO[i-1]) == 1) { // 两个皇后在对角线上，\或/。
+                flag = false;
+            }
+            */
+            for (j=i-1; j>=1; j--) {
+                if (abs(lineNO[i]-lineNO[j]) == i-j)
+                    flag = false;
+            }
+            checked[lineNO[i]] = true;
+        }
+        if (flag)
+            printf("YES\n");
+        else
+            printf("NO\n");
+        for (i=1; i<=N; i++)
+            checked[i] = false;
+    }
+}
+```
+
+
+## 1129 Recommendation System (25 分)
+
+1. 这道题值得好好看下。
+2. set自动去重加排序，当类型为自定义结构体时，结构体就要实现<运算符，这样set才知道怎么帮我们的结构体对象排序。
+3. set的有序是在插入时维护的，set用红黑树实现，插入的时间复杂度是O(logn)，比排序函数一般的O(nlogn)小。删除、查找的时间复杂度也是O(logn)，删除单个元素的时间复杂度是O(1)。
+4. 如果用vector+sort，就会超时。
+
+```cpp
+#include <iostream>
+#include <set>
+using namespace std;
+
+struct Node {
+    int key;
+    int n;
+    Node(int k, int n_): key(k), n(n_) {}
+    bool operator<(const Node& a) const {
+        if (n != a.n)
+            return n>a.n;
+        return key<a.key;
+    }
+};
+
+int N, K, i, x, j;
+
+set<Node> s;
+
+int frequence[50001];
+
+int main() {
+    auto it = s.begin();
+    scanf("%d %d\n%d", &N, &K, &x);
+    frequence[x]++;
+    s.insert(Node(x, 1));
+    for (i=1; i<N; i++) {
+        scanf("%d", &x);
+        printf("%d:", x);
+        for (it=s.begin(), j=0; j<K && it!=s.end(); j++, it++)
+            printf(" %d", it->key);
+        printf("\n");
+        if ((it=s.find(Node(x, frequence[x]))) != s.end())
+            s.erase(it);
+        frequence[x]++;
+        s.insert(Node(x, frequence[x]));
+    }
+}
+```
+
+
+## 1132 Cut Integer (20 分)
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+int N, i;
+
+long a, b;
+
+string num;
+
+int main() {
+    cin >> N;
+    while (N--) {
+        // scanf("%d", &x);
+        cin >> num; // 作为字符串输入，处理起来方便许多，比如能够马上知道数字的位数而不必遍历一次。
+        a = b = 0;
+        for (i=num.size()/2; i<num.size(); i++)
+            a = a*10+(num[i]-'0');
+        for (i=0; i<num.size()/2; i++)
+            b = b*10+(num[i]-'0');
+        if (a!=0 && b!=0 && stol(num)%(a*b) == 0)
+            printf("Yes\n");
+        else
+            printf("No\n");
+    }
+}
+```
+
+
+## 1148 Werewolf - Simple Version (20 分)
+
+1. 可以有多种枚举策略，比如枚举两个说谎的人或枚举两个狼人，题目要求输出两个狼人，所以就枚举两个狼人。枚举两个说谎的人之后还要去找两个狼人，比较麻烦。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int a[101]; // 编号从1开始，a[i]是玩家i说的话。
+
+int main() {
+    int N, i, j, k, n1, n2;
+    scanf("%d", &N);
+    for (i=1; i<=N; i++)
+        scanf("%d", a+i);
+    for (i=1; i<N; i++) {
+        for (j=i+1; j<=N; j++) {
+            // 枚举两个狼人。
+            n1 = n2 = 0;
+            for (k=1; k<=N; k++) {
+                if (a[k] < 0) { // 玩家k说玩家a[k]是狼人。
+                    if (-a[k]!=i && -a[k]!=j) { // 玩家k说谎了。
+                        if (k==i || k==j)
+                            n1++;
+                        else
+                            n2++;
+                    }
+                } else { // 玩家k说玩家a[k]是平民。
+                    if (a[k]==i || a[k]==j) { // 玩家k说谎了。
+                        if (k==i || k==j)
+                            n1++;
+                        else
+                            n2++;
+                    }
+                }
+            }
+            if (n1==1 && n1+n2==2) {
+                printf("%d %d\n", i, j);
+                return 0;
+            }
+        }
+    }
+    printf("No Solution\n");
+}
+```

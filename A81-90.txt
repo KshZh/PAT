@@ -1,0 +1,753 @@
+## 1081 Rational Sum (20 分)
+
+1. gcd应该不带符号。
+2. baba余b。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+long long gcd(long long a, long long b) {
+    return b==0? a: gcd(b, a%b);
+}
+
+struct Fraction {
+    long long n, d;
+};
+
+// 化简。
+void reduce(Fraction& a) {
+    if (a.d < 0) {
+        a.n = -a.n; // 负号转移。
+        a.d = -a.d;
+    }
+    if (a.n != 0) {
+        long long x = gcd(abs(a.n), abs(a.d)); // 注意这里，使得求出来的gcd不带符号。
+        if (x != 1) {
+            a.n /= x;
+            a.d /= x;
+        }
+    } else {
+        a.d = 1; // 分子为零，则将分母设置为1，简化后续运算。
+    }
+}
+
+void add(Fraction& a, Fraction& b) {
+	// 先暴力地加起来后，
+    a.n = a.n*b.d + b.n*a.d;
+    a.d *= b.d;
+	// 再对结果进行化简，而不要再加的过程中想着对两操作数进行化简。
+    reduce(a);
+}
+
+long long N, i;
+
+Fraction result, temp;
+
+int main() {
+    scanf("%d", &N);
+    scanf("%lld/%lld", &result.n, &result.d);
+    for (i=1; i<N; i++) {
+        scanf("%lld/%lld", &temp.n, &temp.d);
+        add(result, temp);
+    }
+    if (result.d == 1) { // 分母为1，直接打印分子。
+        printf("%lld\n", result.n);
+    } else if (abs(result.n) > result.d) { // 注意，分子可能为负，所以这里要转换为绝对值。
+        if (result.n%result.d == 0)
+            printf("%lld\n", result.n/result.d);
+        else
+            printf("%lld %lld/%lld\n", result.n/result.d, result.n%result.d, result.d);
+    } else {
+        printf("%lld/%lld\n", result.n, result.d);
+    }
+}
+```
+
+
+## 1082 Read Number in Chinese (25 分)
+
+1. 太坑了。
+2. 边界测试，"-0"->"ling", "0"->"ling"，"-10301234"->"Fu yi Qian ling san Shi Wan yi Qian er Bai san Shi si"，而不是"Fu **Yi** yi Qian ling san Shi Wan yi Qian er Bai san Shi si"。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+string digits[10] = {"ling ", "yi ", "er ", "san ", "si ", "wu ", "liu ", "qi ", "ba ", "jiu "};
+
+string unit[3] = {"", "Wan ", "Yi "}; // 每4位间的单位。
+
+string lunit[4] = {"", "Shi ", "Bai ", "Qian "}; // 每4位中的单位。
+
+// 因为要接受负号，所以要作为字符串输入。
+string number, result;
+
+int k, count, i, j;
+
+int main() {
+    cin >> number;
+    auto n = number.size();
+    if (number[0] == '-') {
+        result += "Fu ";
+        n--;
+        k = 1;
+    }
+    // 一位数，直接处理，不然下面的算法无法处理"-0"和"0"的情况。
+    if (n == 1) {
+        result += digits[number[k]-'0'];
+        cout << string(result.begin(), result.end()-1) << endl;
+        return 0;
+    }
+    count = n%4;
+    for (int p=n/4; p>=0; p--) {
+        if (count == 0) {
+            count = 4;
+            continue;
+        }
+        while (count--) {
+            if (number[k] == '0') {
+                // cout << count << endl;
+                for (i=0, j=k+1; i<count; i++, j++) {
+                    if (number[j] != '0')
+                        break;
+                }
+                if (i != count) { // 插入"ling "。
+                    result += digits[number[k]-'0'];
+                    // 跳过后续的零，到第一个非零。
+                    count -= j-k-1;
+                    k = j;
+                } else {
+                    k = j;
+                    break; // 这个4位组后面全是0，不需要插入"ling "。
+                }
+                // cout << number[k] << '\t'<< k << count << endl;
+            } else {
+                result += digits[number[k++]-'0'];
+                result += lunit[count];
+            }
+            // cout << digits[number[k-1]-'0'] << "\t" << lunit[count] << "\t" << result << endl;
+        }
+        result += unit[p];
+        count = 4;
+    }
+    cout << string(result.begin(), result.end()-1) << endl;
+}
+```
+
+
+## 1083 List Grades (25 分)
+
+```cpp
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <vector>
+using namespace std;
+
+struct Record {
+    string name, id;
+    int grade;
+};
+
+// 题目没有给出N的范围，所以还是动态分配吧。
+vector<Record> r;
+
+int N, i, low, high;
+
+bool cmp(const Record& a, const Record& b) {
+    // It is guaranteed that all the grades are distinct.
+    return a.grade > b.grade;
+}
+
+int main() {
+    cin >> N;
+    r.resize(N);
+    for (i=0; i<N; i++)
+        cin >> r[i].name >> r[i].id >> r[i].grade;
+    sort(r.begin(), r.end(), cmp);
+    cin >> low >> high;
+    i = 0;
+    for (auto& e: r) {
+        if (e.grade > high)
+            continue;
+        if (e.grade < low)
+            break;
+        cout << e.name << ' ' << e.id << '\n'; // 不要频繁endl，这会降低运行效率。
+        i++;
+    }
+    if (i == 0)
+        cout << "NONE" << endl;
+}
+```
+
+
+## 1084 Broken Keyboard (20 分)
+
+1. 宁愿检查多一些，多余也没关系，这样不容易出错，不要总是依赖于某些短路操作。
+2. <cctype>, tolower, toupper, isalpha, islower, isupper, isalnum, isspace, isdigit, isxdigit(16进制字符)。
+
+```cpp
+#include <iostream>
+#include <string>
+#include <cctype>
+#include <vector>
+using namespace std;
+
+string s1, s2;
+
+int i, j;
+
+bool book[256];
+
+vector<char> v;
+
+int main() {
+    // 如果输入的句子包含空格，那就要用`getline(cin, s);`了。
+    cin >> s1 >> s2;
+    for (; i<s1.size(); i++) {
+        if (s1[i] == s2[j]) {
+            j++;
+            continue;
+        }
+        // 判断是否是大小写的问题。
+        if (isalpha(s1[i]) && isalpha(s2[j]) && tolower(s1[i])==tolower(s2[j])) {
+            j++;
+            continue;
+        }
+        // s1[i]与s2[j]不相等。
+        if (isalpha(s1[i]) && !book[toupper(s1[i])]) {
+            v.push_back(toupper(s1[i]));
+            book[toupper(s1[i])] = true;
+		// } else if (!book[s1[i]]) { // 会被小写字母绕过，宁愿检查多一些，多余也没关系，这样不容易出错，不要总是依赖于某些短路操作。
+        } else if (!isalpha(s1[i]) && !book[s1[i]]) {
+            v.push_back(s1[i]);
+            book[s1[i]] = true;
+        }
+    }
+    for (char c: v)
+        printf("%c", c);
+}
+```
+
+
+## 1085 Perfect Sequence (25 分)
+
+1. 先给无序数组排序。
+2. 有序 =》二分查找。
+3. 遇到公式不要慌，好好分析一下有几个变量，确定一个，另外那些是否能确定。
+4. 要乘法不溢出，除了要用更大的类型存储结果外，还要改变操作数的类型。
+5. stl中的三个二分查找函数，
+
+lower_bound(), Returns an iterator pointing to the first element in the range [first, last) that is not less than (i.e. greater or equal to) value, or last if no such element is found.
+
+upper_bound(), Returns an iterator pointing to the first element in the range [first, last) that is greater than value, or last if no such element is found.
+
+binary_search(), Checks if an element equivalent to value appears within the range [first, last).
+
+注意，传递给这些函数的序列必须是有序的，否则行为未定义。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int a[100000];
+
+int N, p, M, m, l, r, mid, maxLen=1, i, j;
+
+long long x; // XXX 乘法可能溢出，要用更大的类型存储。
+
+int main() {
+    scanf("%d %d", &N, &p);
+    for (i=0; i<N; i++)
+        scanf("%d", a+i);
+    sort(a, a+N); // 先将无序序列排序成有序升序序列。
+    // m确定了，根据M<=p*m，那么M的最大值也就确定了。
+    for (i=0; i<N; i++) {
+        x = (long long)p*a[i];
+        j = upper_bound(a+i+1, a+N, x)-a;
+        maxLen = max(maxLen, j-i);
+    }
+    printf("%d\n", maxLen);
+}
+```
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int a[100000];
+
+int N, p, M, m, l, r, mid, maxLen, i;
+
+long x; // XXX 乘法可能溢出，要用更大的类型存储。
+
+int main() {
+    scanf("%d %d", &N, &p);
+    for (i=0; i<N; i++)
+        scanf("%d", a+i);
+    sort(a, a+N); // 先将无序序列排序成有序升序序列。
+    // m确定了，根据M<=p*m，那么M的最大值也就确定了。
+    for (i=0; i<N; i++) {
+        x = (long)p*a[i];
+        l = i;
+        r = N; // 查找区间是[l, r)。
+        while (l < r) {
+            mid = (l+r)/2;
+            if (a[mid] > x) // 缩小范围继续查找，找到**第一个**。
+                r = mid; // 缩小范围的同时，r隐含地存储了大于upper_bound的元素的下标。
+            else
+                l = mid+1;
+        }
+        maxLen = max(maxLen, r-i);
+    }
+    printf("%d\n", maxLen);
+}
+```
+
+
+## 1086 Tree Traversals Again (25 分)
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <stack>
+using namespace std;
+
+char cmd[5]; // 多一个字节存储'\0'。
+
+int N, i, x;
+
+// 先序序列，先指根先访问。
+vector<int> pre;
+vector<int> in; // 根中。
+vector<int> post; // 根后。
+
+stack<int> s;
+
+// 根据先序和中序序列得到后序序列。
+void postorder_traverse(int pStart, int iStart, int len) {
+    if (len == 0)
+        return; // XXX 别忘了设置递归终点。
+    int root = pre[pStart];
+    for (i=iStart; i<iStart+len && in[i]!=root; i++)
+        ;
+    int lchildLen = i-iStart; // 右开减左闭，得到区间长度。
+    int rchildLen = len - 1 - lchildLen;
+    // 后序遍历，左、右、根。
+    postorder_traverse(pStart+1, iStart, lchildLen);
+    postorder_traverse(pStart+1+lchildLen, iStart+lchildLen+1, rchildLen); // `pStart+1+lchildLen`，左闭加区间长度等于右开，也就是右子序列的左闭。
+    post.push_back(root);
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N;) {
+        scanf("%s", cmd);
+        if (cmd[1] == 'u') {
+            scanf("%d", &x);
+            s.push(x);
+            pre.push_back(x);
+        } else {
+            in.push_back(s.top());
+            s.pop();
+            i++;
+        }
+    }
+    postorder_traverse(0, 0, N);
+    printf("%d", post[0]);
+    for (i=1; i<post.size(); i++)
+        printf(" %d", post[i]);
+}
+```
+
+
+## 1087 All Roads Lead to Rome (30 分)
+
+1. 这道题可以多看看。
+2. 初始化：max=min/-1，min=max。
+3. `dfs(idxOfROM, 0, 0);`而不是`dfs(idxOfROM, citys[idxOfROM].weight, 1);`。
+4. 如果输入string，用cin，不用scanf()。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <climits>
+#include <map>
+using namespace std;
+
+int N, K, i, w, idxOfROM, idxOfStart, maxTotalWeight=-1, nCity, nShortestPath;
+
+double maxAvgWeight=-1;
+
+vector<int> shortestPath;
+vector<int> bestShortestPath;
+
+struct City {
+    string name;
+    int weight;
+};
+
+City citys[200];
+
+// arc，弧，有向边。
+// edge，边，无向边。
+int edge[200][200];
+
+map<string, int> idx;
+
+string city1, city2;
+
+int path[200]; // path[i]记录v0到vi的最短路径长度，注意，最短路径长度是唯一的。
+bool visited[200];
+vector<int> pre[200]; // pre[i]记录v0到vi的最短路径上，vi的前驱结点。可能有多条最短路径，所以用vector<int>存储。
+
+void dijkstra(int v0) {
+    path[v0] = 0;
+    int v, min_;
+    while (!visited[idxOfROM]) { // 只要找到v0到idxOfROM的最短路径后，就不必继续寻找最短路径了。
+        min_ = INT_MAX; // 初值：min=max，max=min。
+        for (i=0; i<N; i++) {
+            if (!visited[i] && path[i]<min_) {
+                min_ = path[i];
+                v = i;
+            }
+        }
+        visited[v] = true;
+        // 考察以v作为中继点。
+        for (i=0; i<N; i++) {
+            if (!visited[i] && edge[v][i]!=0) {
+                if (path[v]+edge[v][i] < path[i]) {
+                    path[i] = path[v]+edge[v][i];
+                    pre[i].clear(); // 路径更短，之前的前驱结点都不算。
+                    pre[i].push_back(v);
+                } else if (path[v]+edge[v][i] == path[i]) {
+                    pre[i].push_back(v);
+                }
+            }
+        }
+    }
+}
+
+// 递归的形状是树形。
+void dfs(int v, int totalWeight, int nCity) {
+    if (v == 0) { // 出发城市没有点权。
+        nShortestPath++;
+        if ((totalWeight>maxTotalWeight) || (totalWeight==maxTotalWeight && totalWeight/nCity>maxAvgWeight)) {
+            maxTotalWeight = totalWeight;
+            maxAvgWeight = totalWeight/nCity;
+            bestShortestPath = shortestPath;
+        }
+        return;
+    }
+
+    shortestPath.push_back(v);
+
+    for (int x: pre[v])
+        // dfs(x, totalWeight+citys[x].weight, nCity+1);
+        dfs(x, totalWeight+citys[v].weight, nCity+1);
+
+    shortestPath.pop_back();
+}
+
+int main() {
+    cin >> N >> K >> citys[0].name; // 注意，出发城市的输入不能放到下面的循环中，因为出发城市没有点权。
+    for (i=1; i<N; i++) {
+        cin >> citys[i].name >> citys[i].weight;
+        idx[citys[i].name] = i; // 将name映射到下标。
+        path[i] = INT_MAX; // 使用dijkstra算法必要的初始化。
+    }
+    for (i=0; i<K; i++) {
+        cin >> city1 >> city2 >> w;
+        edge[idx[city1]][idx[city2]] = w;
+        edge[idx[city2]][idx[city1]] = w;
+    }
+    idxOfROM = idx["ROM"];
+    idxOfStart = 0;
+    dijkstra(idxOfStart);
+    // dfs(idxOfROM, citys[idxOfROM].weight, 1);
+    dfs(idxOfROM, 0, 0);
+    printf("%d %d %d %d\n", nShortestPath, path[idxOfROM], maxTotalWeight, (int)maxAvgWeight);
+    printf("%s", citys[0].name.c_str());
+    for (i=bestShortestPath.size()-1; i>=0; i--)
+        printf("->%s", citys[bestShortestPath[i]].name.c_str());
+}
+```
+
+
+## 1088 Rational Arithmetic (20 分)
+
+1. 写算法题时，一个原则是，只被调用一次的函数可以用全局变量，但被多次调用的函数尽量不要用全局变量，不然除非重新初始化，否则调用间会相互干扰（除非这就是我们所期望的）。
+2. 全局变量的坏处就是一次调用会影响到下一次调用，这里如果没有初始化，就会被上一次调用干扰到。
+3. 如果x是负数，那么to_string()会生成一个负号。
+
+对于分数的格式化输出，
+1. 两个特殊值：分子为0，输出0，另可将分母设置为1，方便运算。分母为1，分子就是整数部分，只输出整数部分。
+2. 分母的负号转移给分子，分子的负号转移给整数部分；
+3. 分子分母化到最简，若gcd不为1，则分子分母同除gcd，注意要传分子分母的绝对值给gcd()，才能得到一个正的gcd。
+4. 若可以提出整数部分，则分子相应要减小，而且分子的负号要转移给整数部分。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+long gcd(long a, long b) {
+    return b==0? a: gcd(b, a%b);
+}
+
+long a1, b1, a2, b2, a3, b3, x;
+
+string op1, op2, result;
+
+bool flag; // 是否加括号。
+
+void createStr(string& s, long a, long b) {
+    flag = false; // 全局变量的坏处就是一次调用会影响到下一次调用，这里如果没有初始化，就会被上一次调用干扰到。
+    if (a == 0) {
+        s = "0";
+        return;
+    }
+    result.clear();
+    if ((x=gcd(abs(a), abs(b))) != 1) {
+        a /= x;
+        b /= x;
+    }
+    if (b < 0) {
+        a = -a;
+        b = -b; // 将分母的负号转移给分子。
+    }
+    if (a < 0) // 注意这里flag的设置要放在上面的判断后面，避免负负得正的情况。
+        flag = true;
+    if (b == 1) {
+        s += to_string(a);
+    } else {
+        x = a/b; // 整数部分，如果a1是负数，那么x也是负数。
+        if (x != 0) {
+            a %= b; // 这里记得提取出整数部分后，分子要相应地减小。
+            if (x < 0) {
+                a = -a; // 负号转移。
+            }
+            s += to_string(x); // 如果x是负数，那么to_string()会生成一个负号。
+            s += " ";
+        }
+        s += to_string(a) + "/" + to_string(b);
+    }
+    if (flag)
+        s = "(" + s + ")";
+}
+
+int main() {
+    scanf("%ld/%ld %ld/%ld", &a1, &b1, &a2, &b2);
+    createStr(op1, a1, b1);
+    createStr(op2, a2, b2);
+    a3 = a1*b2+a2*b1;
+    b3 = b1*b2;
+    createStr(result, a3, b3);
+    printf("%s + %s = %s\n", op1.c_str(), op2.c_str(), result.c_str());
+    a3 = a1*b2-a2*b1;
+    createStr(result, a3, b3);
+    printf("%s - %s = %s\n", op1.c_str(), op2.c_str(), result.c_str());
+    a3 = a1*a2;
+    createStr(result, a3, b3);
+    printf("%s * %s = %s\n", op1.c_str(), op2.c_str(), result.c_str());
+    a3 = a1*b2;
+    b3 = b1*a2;
+    if (a2 == 0) {
+        printf("%s / %s = Inf\n", op1.c_str(), op2.c_str());
+    } else {
+        createStr(result, a3, b3);
+        printf("%s / %s = %s\n", op1.c_str(), op2.c_str(), result.c_str());
+    }
+}
+```
+
+
+## 1089 Insert or Merge (25 分)
+
+1. 对于用插入排序排序的输入序列，可以通过对原始序列施行插入排序，来判断输入序列是否是使用了插入排序。但对于使用归并排序排序的输入序列，无法通过对输入序列使用归并排序来判断。这是因为递归调用是串行的，也就是**树形递归的分支并不是同时展开的，而是最终的形状是多分枝的**。所以对于后者，只能通过模拟。
+2. std::equal。
+3. sort(a.begin()+j, a.begin()+min(i+j, N)); // 模拟对每个小的部分排序，注意用min()保证不越界。
+4. 对插入排序，也可以模拟，因为特征比较明显，如果部分排序序列前n个数有序，后N-n个数与原始序列相等，那么就是用的插入排序，此时我们再用std::sort()或手动多排一次即可。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+int N;
+
+vector<int> init, a, partially;
+
+bool oneMore;
+
+// Insertion sort iterates, consuming one input element each repetition, and growing a sorted output list.
+// Each iteration, insertion sort removes one element from the input data,
+// finds the location it belongs within the sorted list, and inserts it there. It repeats until no input elements remain.
+// 每次取一个**插入**到已排序序列中去。
+// void insertion_sort(int* a, int len) {
+void insertion_sort(int len) {
+    int i, j, x;
+    for (i=1; i<len; i++) { // 第一个元素是有序的。
+        x = a[i]; // removes one element from the input data.
+        for (j=i; j>0 && x<a[j-1]; j--) // 比x大的元素后移。
+            a[j] = a[j-1];
+        a[j] = x;
+        if (oneMore) {
+            break;
+        }
+        if (equal(a.begin(), a.end(), partially.begin())) {
+            oneMore = true;
+        }
+    }
+}
+
+// [l, r)，左闭右开，与标准库保持一致。
+// Merge sort works as follows: Divide the unsorted list into N sublists,
+// each containing 1 element (a list of 1 element is considered sorted).
+// Then repeatedly merge two adjacent sublists to produce new sorted sublists until there is only 1 sublist remaining.
+// O(nlogn).
+// void merge_sort(int *a, int l, int r) {
+void merge_sort(int l, int r) {
+    static int b[100];
+    if (l == r-1) // 只有一个元素的sublist是有序的，不需要做什么。
+        return;
+    int mid = (l+r)/2;
+    // divide.
+    // merge_sort(a, l, mid); // O(logn).
+    // merge_sort(a, mid, r);
+    merge_sort(l, mid);
+    merge_sort(mid, r);
+    // conquer.
+    int i, j, k;
+    for (i=j=l, k=mid; i<r; i++) { // O(n).
+        if (j == mid)
+            b[i] = a[k++];
+        else if (k == r)
+            b[i] = a[j++];
+        else if (a[j] < a[k]) // j<mid && k<r
+            b[i] = a[j++];
+        else
+            b[i] = a[k++];
+    }
+    for (i=l; i<r; i++)
+        a[i] = b[i];
+}
+
+// void print(int* a, int len) {
+void print(int len) {
+    printf("%d", a[0]);
+    for (int i=1; i<len; i++)
+        printf(" %d", a[i]);
+    printf("\n");
+}
+
+void merge_sort() {
+    int i, j;
+    for (i=1; i<=N; i*=2) { // i是步伐。这里条件也可以是true，反正最后一定会break。
+        if (i != 1) {
+            for (j=0; j<N; j+=i)
+                sort(a.begin()+j, a.begin()+min(i+j, N)); // 模拟对每个小的部分排序，注意用min()保证不越界。
+        }
+        if (oneMore) {
+            break;
+        }
+        if (equal(a.begin(), a.end(), partially.begin())) {
+            oneMore = true;
+        }
+        // print(N);
+    }
+}
+
+
+int main() {
+    // int a[10] = {3, 1, 2, 8, 7, 5, 9, 4, 6, 0};
+    // insertion_sort(a, 10);
+    // print(a, 10);
+    // merge_sort(a, 0, 10);
+    // print(a, 10);
+    scanf("%d", &N);
+    init.resize(N);
+    partially.resize(N);
+    for (int i=0; i<N; i++)
+        scanf("%d", &init[i]);
+    for (int i=0; i<N; i++)
+        scanf("%d", &partially[i]);
+    a = init; // 拷贝一份。
+    insertion_sort(N);
+    if (oneMore) {
+        printf("Insertion Sort\n");
+        print(N);
+        return 0;
+    }
+    a = init; // 拷贝一份。
+    // merge_sort(0, N);
+    merge_sort();
+    printf("Merge Sort\n");
+    print(N);
+}
+```
+
+
+## 1090 Highest Price in Supply Chain (25 分)
+
+1. 下一层没有元素了，break，否则死循环。
+2. 考虑边界情况。
+3. 记住层次的bfs要注意，推入根后马上推入结束标志，若下一层没有元素，就要break，否则死循环。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <vector>
+using namespace std;
+
+int N, i, root, parent, num=1; // 这里注意num要初始化为1，以应对输入只有一层，即输入只有根的情况，这种情况下bfs()无法处理num。
+
+double P, r;
+
+vector<vector<int>> childs; // a[i]存储结点i的指向的结点，这是一个有向图/一棵树。
+
+// 由于每一层的销售价相等，且一层一层往外递增，所以用bfs更符合逻辑。
+void bfs() {
+    int x;
+    queue<int> q;
+    q.push(root);
+    q.push(-1); // 别忘了第一层只有根，push根后马上就要push结束标志。
+    while (!q.empty()) {
+        x = q.front();
+        q.pop();
+        if (x == -1) { // 一层遍历完了。
+            if (q.empty()) // XXX 下一层没有元素了，break，否则死循环。
+                break;
+            P *= (1+r); // 下一层的销售价。
+            num = q.size(); // 下一层的大小。
+            q.push(-1); // 推入下一层的结束标志。
+            continue;
+        }
+        for (int child: childs[x])
+            q.push(child);
+    }
+}
+
+int main() {
+    scanf("%d %lf %lf", &N, &P, &r);
+    r /= 100; // 注意r是百分数，要转化为小数。
+    childs.resize(N);
+    for (i=0; i<N; i++) {
+        scanf("%d", &parent);
+        if (parent == -1) {
+            root = i;
+            continue;
+        }
+        childs[parent].push_back(i);
+    }
+    bfs();
+    printf("%.2lf %d\n", P, num);
+}
+```
+

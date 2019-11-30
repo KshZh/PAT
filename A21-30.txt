@@ -1,0 +1,896 @@
+## 1021 Deepest Root (25 分)
+
+1. 给出一个无环图，判断是否只有一个连通分量，是则是一颗树，求这棵树的最深根，否则输出连通分量数。
+2. 判断是否只有一个连通分量可以看是否只需要一次遍历就可以遍历所有结点，或者在输入边时建立并查集（不断合并），然后遍历结点，看是否只有一个结点的父结点是其本身。
+3. https://stackoverflow.com/questions/2603692/what-is-the-difference-between-tree-depth-and-height，**深度从结点到根，根的深度反而为0，高度从结点到叶，叶的高度反而为0**。
+
+I learned that depth and height are properties of a node:
+
+The depth of a node is the number of edges from the node to the tree's root node.
+A root node will have a depth of 0.
+
+The height of a node is the number of edges on the longest path from the node to a leaf.
+A leaf node will have a height of 0.
+
+Properties of a tree:
+
+The height of a tree would be the height of its root node,
+or equivalently, the depth of its deepest node.
+
+The diameter (or width) of a tree is the number of nodes on the longest path between any two leaf nodes. The tree below has a diameter of 6 nodes.
+
+A tree, with height and depth of each node
+
+很容易想到用图的遍历判断是否是树，同时对每个结点进行dfs/bfs，记录以该结点为根的树的高度。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+// the nodes are numbered from 1 to N
+// 因为边不带权，所以可用bool表示一条边是否存在。
+bool graph[10002][10002];
+
+bool visited[10002];
+
+int N, K, maxHeight = -1;
+
+vector<int> vec;
+
+void dfs1(int v) {
+    visited[v] = true;
+    for (int i=1; i<=N; i++) {
+        if (!visited[i] && graph[v][i])
+            dfs1(i);
+    }
+}
+
+int dfs2(int v) {
+    int height = -1;
+    visited[v] = true;
+    for (int i=1; i<=N; i++) {
+        if (!visited[i] && graph[v][i])
+            height = max(dfs2(i), height);
+    }
+    return height+1; // 由于将height初始化为-1，故叶结点会返回高度0，这符合定义。
+}
+
+int main() {
+    int i, j, k;
+    scanf("%d", &N);
+    // N−1 lines follow, each describes an edge by given the two adjacent nodes' numbers.
+    for (i=0; i<N-1; i++) {
+        scanf("%d %d", &j, &k);
+        graph[j][k] = graph[k][j] = true;
+    }
+    for (i=1; i<=N; i++) {
+        if (!visited[i]) {
+            dfs1(i);
+            K++;
+        }
+    }
+    if (K != 1) {
+        printf("Error: %d components\n", K);
+        return 0;
+    }
+    for (i=1; i<=N; i++) {
+        fill(visited+1, visited+2+N, 0);
+        if (!visited[i]) {
+            int height = dfs2(i);
+            if (height > maxHeight) {
+                maxHeight = height;
+                vec.clear();
+                vec.push_back(i);
+            } else if (height == maxHeight) {
+                vec.push_back(i);
+            }
+        }
+    }
+    for (i=0; i<vec.size(); i++) {
+        printf("%d\n", vec[i]);
+    }
+}
+```
+
+上面这种朴素的算法会超时，一个改进是：
+
+> 第一次任选一个结点作为根，找出它的最深叶节点（记为集合A）；第二次以集合A中任一点作为根再找出最深叶节点（记为B）；两次集合的并集即为最深根节点集合。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <algorithm>
+using namespace std;
+
+// the nodes are numbered from 1 to N
+// 因为边不带权，所以可用bool表示一条边是否存在。
+bool graph[10002][10002];
+
+bool visited[10002];
+
+int N, K, maxDepth = -1;
+
+vector<int> vec;
+// 因为要求多个最深根升序输出，且唯一，所以不用vector而用set。
+set<int> deepestRoot;
+
+// 如果是bfs，就在每一层结束时push一个标志，每读到一个标志，就将深度加一。
+// A root node will have a depth of 0.
+// A leaf node will have a height of 0.
+// 因为我们将调用传入的v视为根（相对的），所以这里参数名为depth而不是height。
+void dfs(int v, int depth) {
+    if (depth > maxDepth) {
+        maxDepth = depth;
+        vec.clear();
+        vec.push_back(v);
+    } else if (depth == maxDepth) {
+        vec.push_back(v);
+    }
+
+    visited[v] = true;
+    for (int i=1; i<=N; i++) {
+        if (!visited[i] && graph[v][i])
+            dfs(i, depth+1);
+    }
+}
+
+void dfs1(int v) {
+    visited[v] = true;
+    for (int i=1; i<=N; i++) {
+        if (!visited[i] && graph[v][i])
+            dfs1(i);
+    }
+}
+
+int main() {
+    int i, j, k;
+    scanf("%d", &N);
+    // N−1 lines follow, each describes an edge by given the two adjacent nodes' numbers.
+    for (i=0; i<N-1; i++) {
+        scanf("%d %d", &j, &k);
+        graph[j][k] = graph[k][j] = true;
+    }
+    for (i=1; i<=N; i++) {
+        if (!visited[i]) {
+            dfs1(i);
+            K++;
+        }
+    }
+    if (K != 1) {
+        printf("Error: %d components\n", K);
+        return 0;
+    }
+    fill(visited+1, visited+2+N, 0);
+    dfs(1, 0);
+    for (i=0; i<vec.size(); i++)
+        deepestRoot.insert(vec[i]);
+    fill(visited+1, visited+2+N, 0);
+    vec.clear();
+    dfs(vec[0], 0);
+    for (i=0; i<vec.size(); i++)
+        deepestRoot.insert(vec[i]);
+    for (auto it=deepestRoot.begin(); it!=deepestRoot.end(); it++)
+        printf("%d\n", *it);
+}
+```
+
+
+## 1022 Digital Library (30 分)
+
+1. 复杂数据项输入，查询数据。
+2. 数据的组织方式。
+3. 使用cin、getline和scanf配合接收输入。TODO：除了刷题，cin和scanf最好不要混用。
+4. 一个方式是根据输入建立一个数据结构，建立该数据结构对象的数组来接受输入，遇到查询时，遍历该数组。
+5. 另一个方式当然是用映射。注意到，题目要求输入查询只需要输出符合的项的id。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+
+int N, M;
+
+void query(map<string, set<int>> &m, string &s) {
+    if (m.find(s)==m.end())
+        printf("Not Found\n");
+    else {
+        for (auto it=m[s].begin(); it!=m[s].end(); it++)
+            printf("%07d\n", *it);
+    }
+}
+
+// 由于要有序输出符合查询条件的id，所以用set而不用vector。
+map<string, set<int>> titles, authors, keywords, publishers, years;
+
+int main() {
+    int i, id, type;
+    char c;
+    string title, author, keyword, publisher, year, temp;
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d\n", &id); // 注意跳过\n。
+        // 或者也可以：
+        // scanf("%d", &id);
+        // getchar();
+        getline(cin, title); // 这里注意要用getline，而不是cin>>，因为title可能由多个空格分隔的单词组成。
+        titles[title].insert(id);
+        getline(cin, author);
+        authors[author].insert(id);
+        // 注意这里的输入一行，然后跳到下一行的操作。另一个方法是使用stringstream。
+        while (cin >> keyword) {
+            keywords[keyword].insert(id);
+            if (getchar() == '\n')
+                break;
+        }
+        getline(cin, publisher);
+        publishers[publisher].insert(id);
+        getline(cin, year);
+        years[year].insert(id);
+    }
+    scanf("%d", &M);
+    for (i=0; i<M; i++) {
+        scanf("%d: ", &type);
+        getline(cin, temp);
+        cout << type << ": " << temp << endl;
+        switch (type) {
+        case 1: query(titles, temp); break;
+        case 2: query(authors, temp); break;
+        case 3: query(keywords, temp); break;
+        case 4: query(publishers, temp); break;
+        case 5: query(years, temp); break;
+        }
+    }
+}
+```
+
+
+## 1023 Have Fun with Numbers (20 分)
+
+1. 如果用vector比较方便就不要用数组，不必瞎担心性能问题。
+2. 大数用string存储。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+// 输入的数最多20位，int放不下，long也不行。
+string x;
+int carry = 0, y, i;
+bool flag = true;
+
+int a[10];
+
+vector<int> v;
+
+int main() {
+    cin >> x;
+    // 模拟乘2的过程。
+    for (i=x.size()-1; i>=0; i--) {
+        a[x[i]-'0']++; // 输入x中出现数字x[i]-'0'，递增x[i]-'0'的计数器。
+
+        y = (x[i]-'0')*2 + carry;
+        carry = y>9? 1: 0; // 进位只可能是1或0，不可能是2或更大。
+        y = y%10; // 一位数%10还是得到这一位数。
+
+        a[y]--; // 乘2结果中会出现数字y，递减y的计数器。
+        v.push_back(y);
+    }
+    // XXX 记得处理最高位的进位。
+    if (carry) {
+        v.push_back(carry);
+        a[carry]--;
+    }
+    for (i=0; i<10; i++) {
+        if (a[i] != 0) {
+            flag = false;
+            break;
+        }
+    }
+    if (flag)
+        printf("Yes\n");
+    else
+        printf("No\n");
+    for (i=v.size()-1; i>=0; i--) {
+        printf("%d", v[i]);
+    }
+    printf("\n");
+}
+```
+
+
+## 1024 Palindromic Number (25 分)
+
+1. 判断一个数是否是回文数时，通过会逆序这个数，如果这个数不是回文数，那么逆序这个数可能会溢出，所以要采用尽量大的存储类型存储。
+2. 题目给出N最大为10^10，显然不能用int存储，因为int最多有10位，而10^10有11位（1右边有10个零）。用long看似不会溢出，但这道题中设计到加法运算，当K很大时，两个大整数相加后还是可能会溢出。所以只能用字符串存储和运算。
+3. std::reverse算法，可以逆序数组、string和容器，修改的是本身，不会拷贝副本后修改。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+int K, i, j, n, carry;
+string N, x;
+
+int main() {
+    cin >> N >> K;
+    for (i=0; i<K; i++) {
+        x = N;
+        reverse(x.begin(), x.end());
+        if (x == N) {
+            cout << N << endl << i << endl;
+            return 0;
+        }
+        n = N.size();
+        carry = 0;
+        for (j=n-1; j>=0; j--) {
+            N[j] = N[j] + x[j] + carry - '0';
+            carry = 0;
+            if (N[j] > '9') {
+                N[j] -= 10;
+                carry = 1;
+            }
+        }
+        // XXX 记得处理进位。
+        if (carry) N = "1" + N;
+        /*
+        flag = true;
+        // 不采用这种算法，因为该算法只是判断了是否为回文数，无法产出它的逆序数，如果不是回文数，我们也需要这个逆序数。
+        for (j=0; j<n/2; j++) {
+            if (N[j] != N[n-1-j])
+                flag = false;
+        }
+        */
+    }
+    cout << N << endl << K << endl;
+}
+```
+
+
+## 1025 PAT Ranking (25 分)
+
+1. 一个朴素的想法是用一个二维数组，按照location存储各location的testee。这种组织方式在统计local rank时，排序很方便，但统计final rank时，也许就需要把这些testee再拷贝到一个数组中了。
+2. 这样采用的方法是，只用一个一维数组存储所有testee，由于输入的按照location顺序输入各location的testee的，所以再用另一个一维数组，维护每个location的testee在一维数组中的起始点。
+3. 但是，如果边输入边处理，输入完一个location的testee就整理这个location的testee的local rank，就不需要维护数组indexs了。
+4. 而且完善一下比较函数，就可以不用调用stable_sort了。比如**若score相等，那么就根据别的成员来比较排序**。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+struct testee {
+    char id[14]; // 13+1，因为要存储'\0'。
+    int score;
+    int final_rank;
+    int location;
+    int local_rank;
+};
+
+int N, K, i, j, k, sum;
+
+testee t[100*300];
+
+// 记录location i运行的testee在t数组中的起始下标，i从1开始。
+int indexs[102];
+
+// 先按final rank升序输出，如果final rank相同，则按registration number升序输出。
+
+int main() {
+    scanf("%d", &N);
+    sum = 0;
+    for (i=1; i<=N; i++) {
+        scanf("%d", &K);
+        indexs[i] = sum;
+        for (j=0; j<K; j++) {
+            scanf("%s %d", t[sum+j].id, &t[sum+j].score);
+            t[sum+j].location = i;
+        }
+        sum += K;
+    }
+    indexs[i] = sum; // t数组的结束边界，注意循环结束时i已经是N+1了。
+    // 对每个location的testee按score降序排序，整理出local rank。
+    for (i=1; i<=N; i++) {
+        sort(t+indexs[i], t+indexs[i+1], [](const testee &a, const testee &b){ return a.score>b.score; });
+        t[indexs[i]].local_rank = 1;
+        k = 2;
+        for (j=indexs[i]+1; j<indexs[i+1]; j++) {
+            if (t[j].score == t[j-1].score)
+                t[j].local_rank = t[j-1].local_rank;
+            else
+                t[j].local_rank = k;
+            k++;
+        }
+    }
+    // 对全部testee按score降序排序，整理出final rank。
+    sort(t, t+indexs[N+1], [](const testee &a, const testee &b){ return a.score>b.score; });
+    t[0].final_rank = 1;
+    k = 2;
+    for (j=1; j<indexs[N+1]; j++) {
+        if (t[j].score == t[j-1].score)
+            t[j].final_rank = t[j-1].final_rank;
+        else
+            t[j].final_rank = k;
+        k++;
+    }
+    // 输出。
+    // 先按id升序排序，
+    sort(t, t+indexs[N+1], [](const testee &a, const testee &b){ return strcmp(a.id, b.id)<0; });
+    // 再按final rank升序排序，
+    stable_sort(t, t+indexs[N+1], [](const testee &a, const testee &b){ return a.final_rank<b.final_rank; });
+    printf("%d\n", sum);
+    for (i=0; i<sum; i++) {
+        printf("%s %d %d %d\n", t[i].id, t[i].final_rank, t[i].location, t[i].local_rank);
+    }
+}
+```
+
+但是，如果边输入边处理，输入完一个location的testee就整理这个location的testee的local rank，就不需要维护数组indexs了。而且完善一下比较函数，就可以不用调用stable_sort了。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+struct testee {
+    char id[14]; // 13+1，因为要存储'\0'。
+    int score;
+    int final_rank;
+    int location;
+    int local_rank;
+};
+
+int N, K, i, j, k, sum;
+
+testee t[100*300];
+
+bool cmp(const testee &a, const testee &b) {
+    if (a.score != b.score) return a.score>b.score; // 如果score不想等，就按score降序排序，即若a.score比较大，那么a排前面。
+    else return strcmp(a.id, b.id)<0; // 如果score相等，就按id升序排序。
+}
+
+// 先按final rank升序输出，如果final rank相同，则按registration number升序输出。
+
+int main() {
+    scanf("%d", &N);
+    sum = 0;
+    for (i=1; i<=N; i++) {
+        scanf("%d", &K);
+        for (j=0; j<K; j++) {
+            scanf("%s %d", t[sum+j].id, &t[sum+j].score);
+            t[sum+j].location = i;
+        }
+        // XXX 在输入完一个location的testee后，在接受下一个location的输入前，马上整理这个location的testee的local rank。
+        // 对每个location的testee按score降序排序，整理出local rank。
+        sort(t+sum, t+sum+K, [](const testee &a, const testee &b){ return a.score>b.score; });
+        t[sum].local_rank = 1;
+        k = 2;
+        for (j=sum+1; j<sum+K; j++) {
+            if (t[j].score == t[j-1].score)
+                t[j].local_rank = t[j-1].local_rank;
+            else
+                t[j].local_rank = k;
+            k++;
+        }
+        sum += K;
+    }
+    // 对全部testee按score降序排序，整理出final rank。
+    sort(t, t+sum, cmp);
+    t[0].final_rank = 1;
+    k = 2;
+    for (j=1; j<sum; j++) {
+        if (t[j].score == t[j-1].score)
+            t[j].final_rank = t[j-1].final_rank;
+        else
+            t[j].final_rank = k;
+        k++;
+    }
+    // 输出。
+    // 先按id升序排序，
+    // sort(t, t+indexs[N+1], [](const testee &a, const testee &b){ return strcmp(a.id, b.id)<0; });
+    // 再按final rank升序排序，
+    // stable_sort(t, t+indexs[N+1], [](const testee &a, const testee &b){ return a.final_rank<b.final_rank; });
+    printf("%d\n", sum);
+    for (i=0; i<sum; i++) {
+        printf("%s %d %d %d\n", t[i].id, t[i].final_rank, t[i].location, t[i].local_rank);
+    }
+}
+```
+
+## 1026 Table Tennis (30 分)
+
+1. 比较复杂的模拟题。
+2. 对于一个player数组，其中有一些是vip，有一些不是，那么我们可以用**双指针**，一个指针遍历非vip，一个指针遍历vip。
+3. 题目如果没有说编号从0还是1开始，一般认为是从1开始。
+4. 有桌子总是先考虑vip。（优先级最高，并不需要老实排队，可以插队）
+5. 时间一般不要小时、分钟等分别存储，而是换算成秒数或分钟数，只用一个成员存储。然后在输出时再换算回来。
+6. 这道题虽然有优先队列的意思，但不适合用std::priority_queue做。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+using namespace std;
+
+struct person {
+    int arrive, start, time;
+    bool vip;
+}tempperson;
+
+struct tablenode {
+    int end = 8 * 3600, num; // end表示可接受服务的时间。
+    bool vip;
+};
+bool cmp1(person a, person b) {
+    return a.arrive < b.arrive;
+}
+bool cmp2(person a, person b) {
+    return a.start < b.start;
+}
+
+vector<person> player;
+vector<tablenode> table;
+
+void alloctable(int personid, int tableid) {
+    if(player[personid].arrive <= table[tableid].end)
+        player[personid].start = table[tableid].end;
+    else
+        player[personid].start = player[personid].arrive;
+    table[tableid].end = player[personid].start + player[personid].time;
+    table[tableid].num++; // 自增桌子的使用次数。
+}
+
+int findnextvip(int vipid) {
+    vipid++;
+    while(vipid < player.size() && player[vipid].vip == false) vipid++;
+    return vipid;
+}
+
+int main() {
+    int n, k, m, viptable;
+    scanf("%d", &n);
+    for(int i = 0; i < n; i++) {
+        int h, m, s, temptime, flag;
+        scanf("%d:%d:%d %d %d", &h, &m, &s, &temptime, &flag);
+        tempperson.arrive = h * 3600 + m * 60 + s;
+        tempperson.start = 21 * 3600;
+        if(tempperson.arrive >= 21 * 3600) continue; // 如果等到21点还没有桌子的就不需要服务了，而且到达时间大于21点的肯定不需要服务了。
+        tempperson.time = temptime <= 120 ? temptime * 60 : 7200; // It is assumed that every pair of players can play for at most 2 hours.
+        tempperson.vip = ((flag == 1) ? true : false);
+        player.push_back(tempperson);
+    }
+    scanf("%d%d", &k, &m);
+    table.resize(k + 1); // 一次性分配空间。
+    for(int i = 0; i < m; i++) {
+        scanf("%d", &viptable);
+        table[viptable].vip = true;
+    }
+    sort(player.begin(), player.end(), cmp1); // 按照到达时间升序排序。
+    int i = 0, vipid = -1;
+    vipid = findnextvip(vipid);
+    while(i < player.size()) {
+		// 找到一个最早可以接受服务的桌子。
+        int index = -1, minendtime = 999999999;
+        for(int j = 1; j <= k; j++) {
+            if(table[j].end < minendtime) {
+                minendtime = table[j].end;
+                index = j;
+            }
+        }
+        if(table[index].end >= 21 * 3600) break;
+        if(player[i].vip == true && i < vipid) {
+            i++; // 该vip已经先服务过了，遍历下一个player。
+            continue;
+        }
+        if(table[index].vip == true) { // 有vip桌子。
+            if(player[i].vip == true) { // 如果当前player就是vip，给它。
+                alloctable(i, index);
+                vipid = findnextvip(vipid);
+                i++;
+            } else {
+				// 否则，优先查看队列中下一个最早到达的vip，如果其在桌子可用前就到达了，就给他。
+                if(vipid < player.size() && player[vipid].arrive <= table[index].end) {
+                    alloctable(vipid, index);
+                    vipid = findnextvip(vipid);
+                } else {
+				// 否则，先给普通的player使用。
+                    alloctable(i, index);
+                    i++;
+                }
+            }
+        } else { // 有普通的桌子。
+            if(player[i].vip == false) { // 普通player。
+                alloctable(i, index);
+                i++;
+            } else {
+				// vip，vip**尽量**使用vip桌子。
+				// 找到一张最早可用的vip桌子。
+                int vipindex = -1, minvipendtime = 999999999;
+                for(int j = 1; j <= k; j++) {
+                    if(table[j].vip == true && table[j].end < minvipendtime) {
+                        minvipendtime = table[j].end;
+                        vipindex = j;
+                    }
+                }
+				// 如果该vip到达时已有一张vip桌子可用，那就把这张vip桌子分配给vip，而那张普通桌子则先不用（即先不递增其end成员）
+                if(player[i].arrive >= table[vipindex].end) {
+                    alloctable(i, vipindex);
+                    vipid = findnextvip(vipid);
+                    i++;
+                } else {
+				// 否则，把普通桌子分配给vip。
+                    alloctable(i, index);
+                    vipid = findnextvip(vipid);
+                    i++;
+                }
+            }
+        }
+    }
+    sort(player.begin(), player.end(), cmp2); // 按照服务时间排序。
+    for(i = 0; i < player.size() && player[i].start < 21 * 3600; i++) {
+        printf("%02d:%02d:%02d ", player[i].arrive / 3600, player[i].arrive % 3600 / 60, player[i].arrive % 60);
+        printf("%02d:%02d:%02d ", player[i].start / 3600, player[i].start % 3600 / 60, player[i].start % 60);
+        printf("%.0f\n", round((player[i].start - player[i].arrive) / 60.0));
+    }
+    for(int i = 1; i <= k; i++) {
+        if(i != 1) printf(" ");
+        printf("%d", table[i].num);
+    }
+    return 0;
+}
+```
+
+
+## 1027 Colors in Mars (20 分)
+
+1. 进制转换，从十进制转换到13进制，除13取余法。
+2. 由于确定转换后的结果只有两位，所以不需要用循环。
+3. 因为有'A'这样的字符，所以需要查表。
+4. 如果小写不行，试着用大写。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int a, b, c;
+
+int a1, a2, b1, b2, c1, c2;
+
+char x[13] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C'};
+
+int main() {
+    scanf("%d %d %d", &a, &b, &c);
+    a1 = a%13;
+    a /= 13; // 整数除法。
+    a2 = a%13;
+    b1 = b%13;
+    b /= 13;
+    b2 = b%13;
+    c1 = c%13;
+    c /= 13;
+    c2 = c%13;
+    printf("#%c%c%c%c%c%c\n", x[a2], x[a1], x[b2], x[b1], x[c2], x[c1]);
+}
+```
+
+
+## 1028 List Sorting (25 分)
+
+1. endl会马上刷新缓冲区，最好不要在循环中用endl。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+int N, C, i;
+
+struct Student {
+    int id;
+    string name; // 这里name的最大字符数是确定的，如果卡时间，那么换成char数组和scanf。
+    int grade;
+};
+
+// .bss
+Student s[100000];
+
+bool cmp(const Student& s1, const Student& s2) {
+    // C是全局变量，如果不是，那么可以将该cmp函数改写为lambda式，用值捕获或引用捕获C。
+    if (C==2 && s1.name != s2.name) return s1.name < s2.name;
+    if (C==3 && s1.grade != s2.grade) return s1.grade < s2.grade;
+    return s1.id < s2.id;
+}
+
+int main() {
+    cin >> N >> C;
+    for (i=0; i<N; i++) {
+        cin >> s[i].id >> s[i].name >> s[i].grade;
+    }
+    sort(s, s+N, cmp);
+    for (i=0; i<N; i++) {
+        printf("%06d %s %d\n", s[i].id, s[i].name.c_str(), s[i].grade);
+        // cout << s[i].id << ' ' << s[i].name << ' ' << s[i].grade << endl; // endl会马上刷新缓冲区，最好不要在循环中用endl。
+        // cout << s[i].id << ' ' << s[i].name << ' ' << s[i].grade << '\n';
+    }
+}
+```
+
+
+## 1029 Median (25 分)
+
+1. 给出两个递增序列，找到这两个序列的合并递增序列的中位数。
+2. 注意考虑其中一个序列长度为0的情况下，算法是否还能工作。
+3. 求中位数的下标，如长度3的序列和长度4的序列，其合并递增序列的中位数的下标为(3+4-1)/2=3，再如4、6，其合并序列的中位数下标为(4+6-1)/2=4。
+4. 一般long的大小为8字节，故其inf为0x7fffffffffffffff。但保险起见，可以将正的inf定义为`~(1<<(sizeof(long)*8-1))`，但由于数字字面值默认是int类型，所以要改写为`~(1l<<(sizeof(long)*8-1))`。
+5. 如果出现内存不足，那就**只存储第一个输入序列，第二个输入序列不存储，边输入边处理**。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+int N1, N2, i, j, k, p;
+
+long a[200001], b[200001];
+
+int main() {
+    scanf("%d", &N1);
+    for (i=0; i<N1; i++) {
+        // scanf("%d", &a[i]); // 这样写多了一次访存，当然，相信编译器会优化掉。
+        scanf("%ld", a+i);
+    }
+    a[i] = ~(1l<<(sizeof(long)*8-1)); // 注意考虑其中一个序列长度为0的情况下，算法是否还能工作。
+    scanf("%d", &N2);
+    for (i=0; i<N2; i++) {
+        scanf("%ld", b+i);
+    }
+    b[i] = ~(1l<<(sizeof(long)*8-1)); // 注意考虑其中一个序列长度为0的情况下，算法是否还能工作。
+    // 并不需要真的合并递增序列a和b，然后排序一下，或者在合并过程中维持有序。
+    // 只需要用双指针walk一下a和b即可。
+    for (i=j=k=0; k<=(N1+N2-1)/2; k++) {
+        if (a[i] < b[j]) {
+            p = i;
+            i++; // 将较小的a[i]“加入”合并序列中。
+        } else {
+            // b[j] <= a[i]
+            p = j;
+            j++;
+        }
+    }
+    if (p == i-1)
+        printf("%ld\n", a[p]);
+    else
+        printf("%ld\n", b[p]);
+}
+```
+
+
+## 1030 Travel Plan (30 分)
+
+1. 最短路径。
+2. 如果不满足最优子结构，那就要先把所有最短路径存储下来，然后再一起遍历。
+3. 注意如果变量是全局变量，注意区别，不要使用了全局变量，然而本意是使用局部的同名变量。比如常用的循环控制变量i。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+int N, M, S, D, i, j, k, x, y;
+
+const int inf = 0x7fffffff;
+
+// 一条边有两个权。
+// 这里也可以弄成两个数组。
+pair<int, int> graph[500][500]; // the cities are numbered from 0 to N−1
+
+bool visited[500];
+
+int path[500]; // 记录从S到vi的最短路径中，vi的直接前驱。
+
+pair<int, int> d[500];
+
+void dijkstra() {
+    int v, min, i;
+    // distance权的优先级高于cost权。
+    d[S].first = 0;
+    while (!visited[D]) {
+        min = inf;
+        v = -1;
+        for (i=0; i<N; i++) {
+            if (!visited[i] && d[i].first<min) {
+                min = d[i].first;
+                v = i;
+            }
+        }
+        visited[v] = true;
+        // 考察以结点v中继：
+        for (i=0; i<N; i++) {
+            if (!visited[i] && graph[v][i].first!=0) {
+                // 若到达未确定最短路径集合中的结点i的路径更短，
+                if (d[v].first + graph[v][i].first < d[i].first) {
+                    d[i].first = d[v].first + graph[v][i].first;
+                    d[i].second = d[v].second + graph[v][i].second;
+                    path[i] = v;
+                // 若到达未确定最短路径集合中的结点i的路径一样长，但cost权更小，
+                } else if (d[v].first + graph[v][i].first == d[i].first) {
+                    if (d[v].second + graph[v][i].second < d[i].second) {
+                        d[i].second = d[v].second + graph[v][i].second;
+                        path[i] = v;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void dfs(int v) {
+    if (v == S) {
+        printf("%d ", S);
+        return;
+    }
+    dfs(path[v]); // XXX 先递归到最底层。
+    printf("%d ", v);
+}
+
+int main() {
+    scanf("%d %d %d %d", &N, &M, &S, &D);
+    for (i=0; i<M; i++) {
+        scanf("%d %d %d %d", &j, &k, &x, &y);
+        graph[j][k].first = graph[k][j].first = x;
+        graph[j][k].second = graph[k][j].second = y;
+    }
+    for (i=0; i<N; i++) {
+        // 为dijkstra算法做的初始化工作。
+        d[i].first = inf;
+    }
+    dijkstra();
+    dfs(D);
+    printf("%d %d\n", d[D].first, d[D].second);
+}
+```
+
+

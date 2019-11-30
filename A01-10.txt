@@ -1,0 +1,610 @@
+
+## 1001 A+B Format (20 分)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int a, b, c, d;
+    cin >> a >> b;
+    c = a + b;
+    d = c>0?c:-c;
+    if (d < 1000)
+        printf("%d\n", c);
+    else if (d < 1000000)
+        // 只有最高的三位要带符号，后面的三位组不用带符号。
+        printf("%d,%03d\n", c/1000, d%1000); // %1000得到的必然是小于1000的数。
+    else if (d >= 1000000)
+        printf("%d,%03d,%03d\n", c/1000000, (d/1000)%1000, d%1000);
+    return 0;
+}
+```
+
+## 1002 A+B for Polynomials (25 分)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    // 指数相同，系数可相加减。
+    int k1, k2, i, j, k;
+    float (*p1)[2];
+    float (*p2)[2];
+    float (*p3)[2];
+    cin >> k1;
+    p1 = new float[k1][2];
+    for (i=0; i<k1; i++) {
+        cin >> p1[i][0] >> p1[i][1];
+    }
+    cin >> k2;
+    p2 = new float[k2][2];
+    for (i=0; i<k2; i++) {
+        cin >> p2[i][0] >> p2[i][1];
+    }
+    p3 = new float[k1+k2][2];
+    // two pointer
+    for (i=0, j=0, k=0; i<k1 && j<k2; ) {
+        if (p1[i][0] > p2[j][0]) {
+            p3[k][0] = p1[i][0];
+            p3[k++][1] = p1[i++][1];
+        } else if (p1[i][0] < p2[j][0]) {
+            p3[k][0] = p2[j][0];
+            p3[k++][1] = p2[j++][1];
+        } else {
+            p3[k][0] = p1[i][0];
+            p3[k++][1] = p1[i++][1] + p2[j++][1];
+            // 系数为0的项不输出。
+            if (p3[k-1][1]==0)
+                k--;
+        }
+    }
+    while (i<k1) {
+        p3[k][0] = p1[i][0];
+        p3[k++][1] = p1[i++][1];
+    }
+    while (j<k2) {
+        p3[k][0] = p2[j][0];
+        p3[k++][1] = p2[j++][1];
+    }
+    cout << k;
+    for (i=0; i<k; i++) {
+        printf(" %d %.1f", (int)p3[i][0], p3[i][1]);
+    }
+    cout << endl;
+    delete []p1;
+    delete []p2;
+    delete []p3;
+    return 0;
+}
+```
+
+由于给出的次数均为整数，且范围有限，故有一个比较巧妙的方法：
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    float p[1001] = {0};
+    int i, j, k;
+    float x;
+    cin >> k;
+    for (i=0; i<k; i++) {
+        cin >> j >> x;
+        p[j] += x;
+    }
+    cin >> k;
+    for (i=0; i<k; i++) {
+        cin >> j >> x;
+        p[j] += x;
+    }
+    k = 0;
+    for (i=0; i<1001; i++) {
+        if (p[i] != 0.0)
+            k++;
+    }
+    cout << k;
+    for (i=1000; i>=0; i--) {
+        // 从次数大的开始输出。
+        if (p[i] != 0.0) {
+            // 这里还自动过滤了系数相加为0的项。
+            printf(" %d %.1f", i, p[i]);
+        }
+    }
+    cout << endl;
+    return 0;
+}
+```
+
+## 1003 Emergency (25 分)
+
+求一个结点到另一个结点的最短路径，可用dijkstra算法，一个不同点在于，这个无向图还包括点权，在边权和相等的情况下，就选择点权和最大的最短路径。要在朴素的dijkstra算法上稍加修改。
+
+注意这是一个无向图，不要存储成有向图。
+
+```cpp
+#include <cstdio>
+#include <climits>
+#include <iostream>
+using namespace std;
+
+// 算法题，尽量不要用new，以空间换时间。
+// 未初始化的全局遍历，.bss节，默认初始化为0。
+
+// 求一个结点到其它结点的最短路径，源是确定的，只需要记录目的结点即可。
+int V[501];
+int E[501][501];
+int d[501]; // d[i]，从v0到vi的最短路径长度。（边权和）
+int w[501]; // w[i], 从v0到vi的最短路径的点权和。
+int npath[501]; // npath[i], 从v0到vi的最短路径数。
+bool s[501]; // s[i]，从v0到vi的最短路径是否已经确定，点集S是已经确定最短路径的结点集合，集合V-S反之。
+
+void dijkstra(int n, int c1, int c2) {
+    int min, v, i;
+	// 注意，不要将c1预想为结点0。
+    d[c1] = 0;
+    npath[c1] = 1;
+    w[c1] = V[c1];
+    // dijkstra算法按v0->vi最短路径长度**递增**的次序，逐个将集合V-S中的顶点加入到集合S中。
+    // 如果c2已被并入集合S中，表示c1到c2的最短路径已经确定，那么继续循环就没有意义，
+    while (!s[c2]) {
+        min = INT_MAX;
+        v = -1;
+        for (i=0; i<n; i++) {
+            if (!s[i] && d[i] < min) {
+                min = d[i];
+                v = i;
+            }
+        }
+        if (v == -1)
+            break;
+        s[v] = true;
+        // 考察将v作为中继点。
+        for (i=0; i<n; i++) {
+            // 考察V-S中的点，
+            if (!s[i] && E[v][i]!=0) {
+				if (d[v]+E[v][i]<d[i]) {
+					// 是否通过v中继，得到的最短路径v0->i更短。
+					d[i] = d[v] + E[v][i];
+					w[i] = w[v] + V[i];
+					// npath[i] = 1;
+					npath[i] = npath[v];
+				} else if (d[v]+E[v][i]==d[i]) {
+					// 是否通过v中继，最短路径相等，但路径点权和更大。
+					 // npath[i]++;
+					npath[i] += npath[v];
+					if (w[v] + V[i] > w[i])
+						w[i] = w[v] + V[i];
+					}
+            }
+        }
+    }
+}
+
+int main() {
+    int i, j, k, x, n, m, c1, c2;
+    cin >> n >> m >> c1 >> c2;
+    for (i=0; i<n; i++) {
+        cin >> V[i];
+        d[i] = INT_MAX;
+    }
+    for (i=0; i<m; i++) {
+        cin >> j >> k >> x;
+        // 注意，无向图。
+        E[j][k] = x;
+        E[k][j] = x;
+    }
+    dijkstra(n, c1, c2);
+    printf("%d %d\n", npath[c2], w[c2]);
+}
+```
+
+参考https://blog.csdn.net/richenyunqi/article/details/79532717，其中也有邻接表的实现。
+
+## 1004 Counting Leaves (30 分)
+
+因为要打印每一层的叶结点数，所以一个很自然的想法是使用层序遍历（借助队列）。
+
+显然，题目没有限定给出的树是二叉树，所以对于树的表示法，一开始并没有思路。看了一些博客后，知道用vector数组（因为N小于100，故可用空间换时间），每一个结点对应一个vector，其中存放该结点的子结点的ID。如果一个结点的vector大小为0，表示该结点是一个叶结点。
+
+```cpp
+#include <vector>
+#include <cstdio>
+#include <queue>
+#include <vector>
+using namespace std;
+
+// 调用vector的默认ctor。
+vector<int> v[101];
+int nleaves[101]; // nleaves[i]表示第i层的叶结点数，默认初始化为0。
+int layer;
+
+void bfs(int root) {
+    int x;
+    queue<int> q;
+    q.push(root);
+    q.push(-1); // 该层的结束标志。
+    while (!q.empty()) {
+        x = q.front();
+        q.pop();
+        // printf("%d\n", x);
+        if (x == -1) {
+            layer++;
+            if (q.empty())
+                break;
+            q.push(-1); // 推入结束标志。
+            continue;
+        }
+        if (v[x].size()) {
+            for (int y: v[x])
+                q.push(y);
+        } else {
+            nleaves[layer]++;
+        }
+    }
+}
+
+int main() {
+    int n, m, parent, child, i, j, k;
+    scanf("%d %d", &n, &m);
+    for (i=0; i<m; i++) {
+        scanf("%d %d", &parent, &k);
+        for (j=0; j<k; j++) {
+            scanf("%d", &child);
+            v[parent].push_back(child);
+        }
+    }
+    bfs(1);
+    for (i=0; i<layer-1; i++)
+        printf("%d ", nleaves[i]);
+    printf("%d\n", nleaves[i]);
+}
+```
+
+下面是用树的先根遍历来解决。
+
+```cpp
+#include <cstdio>
+#include <vector>
+using namespace std;
+
+// 调用vector的默认ctor。
+vector<int> v[101];
+int nleaves[101]; // nleaves[i]表示第i层的叶结点数，默认初始化为0。
+int layer;
+
+// 递归需要通过参数携带一些额外的信息，如这里的深度。
+// 其实准确来说不是bfs，因为是树，所以是树的先根遍历，所以不需要记录某个结点是否已被访问过来防止无限递归。
+void dfs(int x, int depth) {
+    if (v[x].size() == 0) {
+        nleaves[depth]++;
+        layer = layer < depth? depth: layer; // 记录最大层数。
+    } else {
+        for (int y: v[x])
+            dfs(y, depth+1);
+    }
+}
+
+int main() {
+    int n, m, parent, child, i, j, k;
+    scanf("%d %d", &n, &m);
+    for (i=0; i<m; i++) {
+        scanf("%d %d", &parent, &k);
+        for (j=0; j<k; j++) {
+            scanf("%d", &child);
+            v[parent].push_back(child);
+        }
+    }
+    // bfs(1);
+    dfs(1, 1);
+    for (i=1; i<layer; i++)
+        printf("%d ", nleaves[i]);
+    printf("%d\n", nleaves[i]);
+}
+```
+
+
+## 1005 Spell It Right (20 分)
+
+```cpp
+#include <iostream>
+#include <string>
+#include <vector>
+using namespace std;
+
+string number[10] = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"};
+
+int main() {
+    // 题目提到，输入N是一个小于10^100的数，计算机没有一个这样的整数类型可以存放这么大范围的数，
+    // 故不能用scanf("%d", s)，而应将其作为字符串读入。
+    string s;
+    int v[10100] = {0};
+    int sum = 0, i = 0;
+    cin >> s;
+    for (char c: s) {
+        sum += (c-'0');
+    }
+    /*
+    while (sum) {
+        v[i] = sum%10;
+        sum /= 10;
+        i++;
+    }
+    */
+    // 注意，如果sum为0，就要输出zero，上面的循环使得没有任何输出。
+    do {
+        v[i] = sum%10;
+        sum /= 10;
+        i++;
+    } while(sum);
+    for (i=i-1; i>0; i--)
+        cout << number[v[i]] << ' ';
+    cout << number[v[i]] << endl;
+}
+```
+
+
+## 1006 Sign In and Sign Out (25 分)
+
+这里涉及到对时间的比较，如比较"15:30:28"和"21:45:00"，显然用字符串进行比较很麻烦，我们可以用超强的scanf函数，用"%d:%d:%d"获取时分秒，然后换算成秒数。
+
+```cpp
+#include <cstdio>
+#include <string>
+#include <vector>
+#include <climits>
+#include <iostream>
+using namespace std;
+
+/*
+struct Record {
+    string id_;
+    int start_, end_;
+    Record(string id, int start, int end):
+        id_(id), start_(start), end_(end) {}
+};
+*/
+
+// 由于题目给出的记录数M为一个int类型，所以不能用空间换时间。
+// vector<Record> v;
+// 根本不用存储。
+
+int main() {
+    string id, unlocked, locked;
+    int M, h1, m1, s1, h2, m2, s2;
+    int min=INT_MAX, max=INT_MIN;
+    scanf("%d", &M);
+    while (M--) { // 先判断再自减，如何快速决策出是先自减还是后自减呢？取特殊值，M==1。
+        cin >> id;
+        scanf("%d:%d:%d %d:%d:%d", &h1, &m1, &s1, &h2, &m2, &s2);
+        // v.push_back(Record(id, h1*3600+m1*60+s1, h2*3600+m2*60+s2));
+        if (h1*3600+m1*60+s1 < min) {
+            min = h1*3600+m1*60+s1;
+            unlocked = id;
+        }
+        if (h2*3600+m2*60+s2 > max) {
+            max = h2*3600+m2*60+s2;
+            locked = id;
+        }
+    }
+    cout << unlocked << ' ' << locked << endl;
+}
+```
+
+
+## 1007 Maximum Subsequence Sum (25 分)
+
+如果提交发生了段错误，往往可能是数组越界，或用未定义值的变量访问数组。
+
+```cpp
+#include <iostream>
+#include <climits>
+using namespace std;
+
+int a[10001];
+int dp[10001];
+
+int main() {
+    int i, K, j;
+    int maxSum=INT_MIN, l=0, r=0;
+    cin >> K;
+    for (i=0, j=0; i<K; i++) {
+        cin >> a[i];
+        if (a[i] < 0)
+            j++;
+    }
+    if (j == K) {
+        // If all the K numbers are negative, then its maximum sum is defined to be 0.
+        cout << 0 << ' ' << a[0] << ' ' << a[K-1] << endl;
+        return 0;
+    }
+    // 很容易处理的基本情况，可以直接处理。
+    /*
+    if (K == 1) {
+        cout << a[0] << ' ' << a[0] << ' ' << a[0] << endl;
+        return 0;
+    }
+    */
+    // 当提交不通过时，可以代入各种基本情况，看算法能不能正常运行。
+    dp[0] = a[0];
+    maxSum = dp[0];
+    for (i=1; i<K; i++) {
+        // dp[i] = max(dp[i-1]+a[i], a[i])
+        if (a[i]+dp[i-1] < a[i]) {
+            dp[i] = a[i];
+            j = i; // 暂时记住求和开始的位置。
+        } else {
+            dp[i] = a[i] + dp[i-1];
+        }
+
+        if (dp[i] > maxSum) {
+            maxSum = dp[i];
+            l = j; // 仅当sum最大时，才更新l和r。
+            r = i;
+        }
+    }
+    cout << maxSum << ' ' << a[l] << ' ' << a[r] << endl;
+}
+```
+
+
+## 1008 Elevator (20 分)
+
+边输入边处理，不必先存储在处理。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int req[100];
+
+int main() {
+    // 从第0层开始，而不是第1层。
+    int i, floor=0, n, sum=0; // floor表示当前电梯所处的楼层。
+    cin >> n;
+    while (n--) {
+        // 边输入边处理，不需要先存储再处理。
+        cin >> i;
+        if (i == floor)
+            sum += 5;
+        else if (i < floor)
+            sum += (floor-i)*4 + 5;
+        else
+            sum += (i-floor)*6 + 5;
+        floor = i;
+    }
+    cout << sum << endl;
+}
+```
+
+
+## 1009 Product of Polynomials (25 分)
+
+```cpp
+#include <iostream>
+#include <cstdio>
+using namespace std;
+
+// 注意，不能把乘积的结果写入p中，比如，一开始p有两项，开始输入第二个多项式，输入第一项，相乘后p有4项，输入第二项，相乘后p可能有6项、8项等，
+// 这是因为输入的项不仅仅只是乘了第一个多项式的项，对于多项式乘法，这显然是错误的。
+float p[1001];
+float r[2001];
+
+int main() {
+    int n, i, j, m; // m存放结果多项式的项数。
+    float x;
+    cin >> n;
+    for (i=0; i<n; i++) {
+        cin >> j >> x;
+        p[j] = x;
+    }
+    cin >> n;
+    m = 0;
+    while (n--) {
+        cin >> j >> x;
+        for (i=0; i<1001; i++) {
+            if (p[i] != 0.0) {
+                if (r[j+i] == 0.0)
+                    m++; // 新的项。
+                // r[j+i] = p[i]*x;   // 注意要累加，而不是赋值，覆盖。
+                r[j+i] += p[i]*x;    
+                // 注意，如果累加后，系数为0，要更新项数。
+                if (r[j+i] == 0.0)
+                    m--;
+            }
+        }
+    }
+    printf("%d", m);
+    // 从高次项开始输出。
+    for (i=2000; i>=0; i--) {
+        if (r[i] != 0.0) {
+            printf(" %d %.1f", i, r[i]);
+            if (--m == 0)
+                break;
+        }
+    }
+    printf("\n");
+}
+```
+
+
+## 1010 Radix (25 分)
+
+进制转换，二分查找O(logn)代替线性查找O(n)，缩小二分查找的上界。
+
+
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+using LL = long long;
+
+// 原本只需要36个LL即可，但这里直接用字符的ascii码来index，以空间换时间，同时也简洁一点。
+LL nums[256];
+
+void init() {
+    char c;
+    for (c='0'; c<='9'; c++)
+        nums[c] = c - '0';
+    for (c='a'; c<='z'; c++)
+        nums[c] = c - 'a' + 10;
+}
+
+LL s2l(const string &s, LL radix) {
+    LL r = 0;
+    for (char c: s)
+        r = r*radix + nums[c];
+    return r;
+}
+
+LL binarySearch(const string &s, LL left, LL right, LL target) {
+    // 二分查找，代替遍历，O(logn)。
+    LL mid, midNum;
+    while (left <= right) {
+        mid = (left+right)/2;
+        midNum = s2l(s, mid);
+        // 关键：注意`midNum<0`，这时就要减小二分查找的上界了。
+        if (midNum < 0 || midNum > target) right = mid - 1;
+        else if (midNum < target) left = mid + 1;
+        else return mid;
+    }
+    return -1;
+}
+
+int minRadix(const string &s){
+    int r = -1;
+    for (char c: s) {
+        if(nums[c] > r)
+            r = nums[c];
+    }
+    return r+1; // s的最小进制。
+}
+
+int main() {
+    init();
+    // 由于输入可能是16进制，包含字母，所以用字符串存储。
+    string N1, N2, N;
+    int tag;
+    LL n, radix, r, left, right;
+    cin >> N1 >> N2 >> tag >> radix;
+    // A digit is less than its radix and is chosen from the set { 0-9, a-z }
+    // where 0-9 represent the decimal numbers 0-9, and a-z represent the decimal numbers 10-35.
+    //
+    // If the equation is impossible, print Impossible. If the solution is not unique, output the smallest possible radix.
+    N = tag==1? N1: N2;
+    n = s2l(N, radix);
+    N = tag==1? N2: N1;
+    left = minRadix(N); // 输入A的最小进制必定为其最大的位数加1，否则就无法表示输入A。
+    right = n + 1; // 输入A的最大进制可以是n+1，表示输入A是“一位数”，这一位数与输入B相等。
+    r = binarySearch(N, left, right, n);
+    if (r == -1)
+        cout << "Impossible" << endl;
+    else
+        cout << r << endl;
+}
+```
+

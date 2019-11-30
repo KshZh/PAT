@@ -1,0 +1,1856 @@
+## 1003 Emergency (25 分)
+
+1. 有权单源最短路径，dijkstra。
+2. 注意从源点到达终点的路径数并不仅仅只是这两个点之间的事，还和源点到终点的中间顶点有关。
+
+```
+#include <iostream>
+#include <climits>
+using namespace std;
+
+// 顶点从0开始编号。
+
+// 因为要随机访问边权和点权，所以用数组存储图。
+int edge[500][500];
+int vertex[500];
+
+// 以下是dijkstra算法需要的数据结构，因为不需要输出路径，所以不用记录前驱然后DFS回溯。
+bool visited[500]; // 全局变量，默认初始化为0，即false。
+int dis[500]; // dis[i]表示从v0->vi的最短路径长度。
+int w[500]; // w[i]表示从v0->vi的最短路径上的点权和。
+int nPath[500];
+
+int N, M, C1, C2, nShortest;
+
+void dijkstra() {
+    int i, v, min_;
+    dis[C1] = 0;
+    w[C1] = vertex[C1];
+    nPath[C1] = 1;
+    while (!visited[C2]) {
+        min_ = INT_MAX;
+        for (i=0; i<N; i++) {
+            if (!visited[i] && dis[i]<min_) {
+                min_ = dis[i];
+                v = i;
+            }
+        }
+        visited[v] = true;
+        // 以v做中继，
+        for (i=0; i<N; i++) {
+            if (!visited[i] && edge[v][i]!=0) {
+                if (dis[v]+edge[v][i] < dis[i]) {
+                    dis[i] = dis[v]+edge[v][i];
+                    w[i] = w[v]+vertex[i];
+                    nPath[i] = nPath[v];
+                    /*
+                    if (i == C2)
+                        nShortest = 1;
+                    */
+                } else if (dis[v]+edge[v][i] == dis[i]) {
+                    // w[i] = w[v]+vertex[i];
+                    // 注意边权和相等，但还要判断点权和是否更大，更大才更新，否则不更新。
+                    if (w[v]+vertex[i] > w[i]) {
+                        w[i] = w[v]+vertex[i];
+                    }
+                    nPath[i] += nPath[v];
+                    /*
+                    if (i == C2)
+                        nShortest++;
+                    */
+                }
+            }
+        }
+    }
+}
+
+int main() {
+    int i, c1, c2, l;
+    scanf("%d %d %d %d", &N, &M, &C1, &C2);
+    for (i=0; i<N; i++) {
+        scanf("%d", vertex+i);
+        // 使用dijkstra算法必要的初始化。
+        dis[i] = INT_MAX; // 最小值初始化为最大值。
+    }
+    for (i=0; i<M; i++) {
+        scanf("%d %d %d", &c1, &c2, &l);
+        edge[c1][c2] = edge[c2][c1] = l; // 无向图。
+    }
+    dijkstra();
+    // printf("%d %d\n", nShortest, w[C2]);
+    printf("%d %d\n", nPath[C2], w[C2]);
+}
+```
+
+
+## 1013 Battle Over Cities (25 分)
+
+1. 用邻接表存储图时的dfs：
+    for (int x: graph[v]) {
+        if (!visited[x])
+            dfs(x);
+    }
+2. 用邻接矩阵存储图时的dfs：
+	for (int i=1; i<=N; i++) {
+		if (!visited[i] && graph[i][v]) // XXX 注意只有相连才继续往下遍历，这点容易忽略。
+			dfs(i);
+	}
+3. 用被删除顶点连接的顶点的度是否为1，来判断有几个连通分量是错误的，考虑四个连通分量，它们的大小都大于一个顶点，然后这四个连通分量依赖这个被删除顶点与其它三个连通分量相连的情况。
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+// 没有边权，且不需要随机存取判断某个边是否存在，那么可以用邻接表存储图。
+vector<vector<int>> graph;
+vector<bool> visited;
+
+int N, M, K;
+
+// 如果不是非要用bfs，则可以用dfs，因为比较简洁。
+void dfs(int v) {
+    visited[v] = true;
+    for (int x: graph[v]) {
+        if (!visited[x])
+            dfs(x);
+    }
+}
+
+int main() {
+    int i, j, k, deleted;
+    scanf("%d %d %d", &N, &M, &K);
+    // 注意结点编号从1开始。
+    graph.resize(N+1);
+    visited.resize(N+1);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &j, &k);
+        // 注意是无向图
+        graph[j].push_back(k);
+        graph[k].push_back(j);
+    }
+    for (i=0; i<K; i++) {
+        scanf("%d", &deleted);
+        // 删除边
+        // XXX 事实上**不必真的删除**，只需在遍历时**假装**不存在到已删除结点deleted的路径即可。
+        // 如果不做这个优化，就会超时。
+        // graph[deleted][j] = false;
+        // graph[j][deleted] = false;
+        fill(visited.begin(), visited.end(), false);
+        visited[deleted] = true;
+        // 图的遍历判断连通分量个数。
+        for (k=0, j=1; j<=N; j++) {
+            if (!visited[j]) {
+                dfs(j);
+                k++;
+            }
+        }
+        // 还原，避免对下次测试造成影响
+        /*
+        for (j=1; j<=N; j++) {
+            graph[deleted][j] = true;
+            graph[j][deleted] = true;
+        }
+        */
+        // 连接k各连通子图至少需要k-1条边。
+        printf("%d\n", k-1);
+    }
+}
+```
+
+
+## 1018 Public Bike Management (30 分)
+
+1. 注意仔细读题，N是除PBMC外的结点数，故结点总数是N+1。
+2. dijkstra生成所有最短路径，再用dfs回溯。
+3. 如果只有Dijkstra是不可以的，因为minNeed和minBack在路径上的传递不满足最优子结构，不是简单的相加的过程，只有在所有路径都确定了之后才能去选择最小的need和最小的back。
+4. 可能有些人做这道题会疑惑，minNeed和minBack不是互斥的吗，如果需要PBMC补充单车的话，该最短路径上的顶点怎么又会有多余的单车送回PBMC呢？有这个疑惑，主要是忽略了补充单车和回送单车的过程，当一个顶点有多余的单车时，它只能回送回PBMC，而无法往顶点S的方向补给其它顶点，而往PBMC的方向，如果有顶点单车较少，那么可以从后面回送回来的单车中取，如果还是不够，就需要PBMC补充了。可以看一下dfs中base case的计算过程。而且，知道了这一点，那么我们就不能简单地用最短路径上的点权和与`perfectCond*path.size()`的差值来得到minNeed和minBack，这种做法恰恰反映了对补充单车和回送单车的过程不了解。
+5. minNeed是主要标准，minBack是次要标准，当主要标准更新后，次要标准无论是否比之前好，都要更新。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <climits>
+using namespace std;
+
+vector<int> vertexes;
+vector<vector<int>> edges;
+vector<int> path, tempPath;
+// 注意N是除PBMC外的结点数，故结点总数是N+1。
+int Cm, N, S, M, perfectCond, sum, minNeed=INT_MAX, minBack=INT_MAX;
+
+vector<bool> visited;
+vector<int> dis;
+vector<vector<int>> pre;
+
+void dijkstra() {
+    int v, min_, i;
+    dis[0] = 0;
+    while(!visited[S]) {
+        min_ = INT_MAX;
+        for (i=0; i<=N; i++) { // 注意要从PBMC开始，因为PBMC也是图的一部分，它也与一些顶点相连。
+            if (!visited[i] && dis[i]<min_) {
+                min_ = dis[i];
+                v = i;
+            }
+        }
+        visited[v] = true;
+        for (i=1; i<=N; i++) {
+            if (!visited[i] && edges[i][v]!=0) {
+                if (dis[v]+edges[v][i] < dis[i]) {
+                    dis[i] = dis[v]+edges[v][i];
+                    pre[i].clear();
+                    pre[i].push_back(v);
+                } else if (dis[v]+edges[v][i] == dis[i]) {
+                    pre[i].push_back(v);
+                }
+            }
+        }
+    }
+}
+
+void dfs(int v) {
+    if (v == 0) {
+        // int x = tempPath.size()*perfectCond - sum;
+        int back=0, need=0;
+        for (auto it=tempPath.rbegin(); it!=tempPath.rend(); it++) {
+            if (vertexes[*it] >= perfectCond) {
+                back += vertexes[*it]-perfectCond;
+            } else {
+                if (back >= perfectCond-vertexes[*it]) {
+                    back -= perfectCond-vertexes[*it];
+                } else {
+                    need += perfectCond-vertexes[*it]-back;
+                    back = 0;
+                }
+            }
+        }
+        if (need < minNeed) {
+            minNeed = need;
+            minBack = back; // 别忘了更新minBack。minNeed是主要标准，minBack是次要标准，当主要标准更新后，次要标准无论是否比之前好，都要更新。
+            path = tempPath;
+        } else if (need==minNeed && back<minBack) {
+            minBack = back;
+            path = tempPath;
+        }
+        return;
+    }
+    // visited[v] = true;
+    tempPath.push_back(v);
+    // sum += vertexes[v];
+    for (int x: pre[v]) {
+        // if (!visited[x])
+            dfs(x);
+    }
+    // sum -= vertexes[v];
+    tempPath.pop_back();
+    // visited[v] = false;
+}
+
+int main() {
+    int i, u, v, t;
+    scanf("%d %d %d %d", &Cm, &N, &S, &M);
+    perfectCond = Cm/2;
+    visited.resize(N+1);
+    dis.resize(N+1);
+    pre.resize(N+1);
+    fill(visited.begin(), visited.end(), false);
+    fill(dis.begin(), dis.end(), INT_MAX);
+    vertexes.resize(N+1);
+    edges.resize(N+1);
+    edges[0].resize(N+1);
+    for (i=1; i<=N; i++) { // 注意下标0是PBMC。
+        scanf("%d", &vertexes[i]);
+        edges[i].resize(N+1);
+    }
+    for (i=0; i<M; i++) {
+        scanf("%d %d %d", &u, &v, &t);
+        edges[u][v] = edges[v][u] = t; // 无向图。
+    }
+    dijkstra();
+    // fill(visited.begin(), visited.end(), false); // 回溯单源最短路径不需要用到visited，因为保证回溯时不会多次碰到相同的顶点。
+    dfs(S);
+    printf("%d 0", minNeed);
+    for (i=path.size()-1; i>=0; i--)
+        printf("->%d", path[i]);
+    printf(" %d\n", minBack);
+}
+```
+
+
+## 1021 Deepest Root (25 分)
+
+1. bfs时，visited数组的更新一定是要在push()时而不是在pop()时。
+2. 图的bfs, dfs一般都是要有visited数组的，如果不是能肯定不需要，如dfs回溯最短路径，一般都要用visited数组，避免被题目坑。
+3. for (int i=0; i<N; i++) { // 错误！下标从1开始容易犯的错误。
+4. 一个更好的算法是：第一次任选一个结点作为根，找出它的最深叶节点（记为集合A）；第二次以集合A中任一点作为根再找出最深叶节点（记为B）；两次集合的并集即为最深根节点集合。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <climits>
+#include <queue>
+using namespace std;
+
+int N;
+
+// 无边权，且不需要随机访问边权，可用邻接表存储。
+vector<vector<int>> edges;
+vector<bool> visited;
+vector<int> maxLevelI;
+int maxLevel = INT_MIN;
+
+int bfs(int v) {
+    queue<int> q;
+    int x, last=v, level=0;
+    q.push(v);
+    visited[v] = true; // visited数组的更新一定是要在push()时而不是在pop()时。
+    while (!q.empty()) {
+        x = q.front();
+        q.pop();
+        for (int u: edges[x]) {
+            if (!visited[u]) {
+                q.push(u);
+                visited[u] = true;
+            }
+        }
+        if (x == last) {
+            last = q.back();
+            level++;
+        }
+    }
+    return level;
+}
+
+vector<int> parent;
+vector<int> rank_;
+
+void init() {
+    parent.resize(N+1);
+    rank_.resize(N+1);
+    // for (int i=0; i<N; i++) { // 错误！下标从1开始容易犯的错误。
+    for (int i=0; i<=N; i++) {
+        parent[i] = i;
+        rank_[i] = 0;
+    }
+}
+
+int find_(int u) {
+    if (parent[u] != u) {
+        parent[u] = find_(parent[u]);
+    }
+    return parent[u];
+}
+
+void union_(int u, int v) {
+    int x = find_(u);
+    int y = find_(v);
+    if (x == y)
+        return;
+    if (rank_[x] > rank_[y]) {
+        parent[y] = x;
+    } else {
+        parent[x] = y;
+        if (rank_[x] == rank_[y]) {
+            rank_[y]++;
+        }
+    }
+}
+
+int main() {
+    int i, j, u, v;
+    scanf("%d", &N);
+    edges.resize(N+1); // 编号从1开始。
+    visited.resize(N+1);
+    init();
+    for (i=1; i<N; i++) {
+        scanf("%d %d", &u, &v);
+        edges[u].push_back(v); // 无向图。
+        edges[v].push_back(u);
+        union_(u, v);
+    }
+    for (i=1, j=0; i<=N; i++) {
+        if (parent[i] == i)
+            j++;
+    }
+    if (j!=1) {
+        printf("Error: %d components\n", j);
+        return 0;
+    }
+    for (i=1; i<=N; i++) {
+        fill(visited.begin(), visited.end(), false);
+        u = bfs(i);
+        if (u > maxLevel) {
+            maxLevel = u;
+            maxLevelI.clear();
+            maxLevelI.push_back(i);
+        } else if (u == maxLevel) {
+            maxLevelI.push_back(i);
+        }
+    }
+    sort(maxLevelI.begin(), maxLevelI.end());
+    for (int x: maxLevelI)
+        printf("%d\n", x);
+}
+```
+
+
+## 1030 Travel Plan (30 分)
+
+```cpp
+#include <iostream>
+#include <climits>
+#include <algorithm>
+using namespace std;
+
+int N, M, S, D;
+
+// 一条边有两个权。
+pair<int, int> graph[500][500]; // the cities are numbered from 0 to N−1
+
+bool visited[500];
+
+int path[500]; // 记录从S到vi的最短路径中，vi的直接前驱。
+
+pair<int, int> d[500];
+
+void dijkstra() {
+    int v, min, i;
+    // distance权的优先级高于cost权。
+    d[S].first = 0;
+    while (!visited[D]) {
+        min = INT_MAX;
+        v = -1;
+        for (i=0; i<N; i++) {
+            if (!visited[i] && d[i].first<min) {
+                min = d[i].first;
+                v = i;
+            }
+        }
+        visited[v] = true;
+        // 考察以结点v中继：
+        for (i=0; i<N; i++) {
+            if (!visited[i] && graph[v][i].first!=0) {
+                // 若到达未确定最短路径集合中的结点i的路径更短，
+                if (d[v].first + graph[v][i].first < d[i].first) {
+                    d[i].first = d[v].first + graph[v][i].first;
+                    d[i].second = d[v].second + graph[v][i].second;
+                    path[i] = v;
+                // 若到达未确定最短路径集合中的结点i的路径一样长，但cost权更小，
+                } else if (d[v].first + graph[v][i].first == d[i].first) {
+                    if (d[v].second + graph[v][i].second < d[i].second) {
+                        d[i].second = d[v].second + graph[v][i].second;
+                        path[i] = v;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void dfs(int v) {
+    if (v == S) {
+        printf("%d ", S);
+        return;
+    }
+    dfs(path[v]);
+    printf("%d ", v);
+}
+
+int main() {
+    int i, j, k, x, y;
+    scanf("%d %d %d %d", &N, &M, &S, &D);
+    for (i=0; i<M; i++) {
+        scanf("%d %d %d %d", &j, &k, &x, &y);
+        graph[j][k].first = graph[k][j].first = x;
+        graph[j][k].second = graph[k][j].second = y;
+    }
+    for (i=0; i<N; i++) {
+        // 为dijkstra算法做的初始化工作。
+        d[i].first = INT_MAX;
+    }
+    dijkstra();
+    dfs(D);
+    printf("%d %d\n", d[D].first, d[D].second);
+}
+```
+
+
+## 1034 Head of a Gang (30 分)
+
+1. 判断连通分量个数可以用并查集或dfs次数（注意判断连通分量的多个dfs之间，不会重复初始化visited数组）。
+2. 这道题用dfs比较容易。
+3. 由于A->B和B->A是不同的，所以这是一张有向图，则graph[v][i]和graph[i][v]是有区别的。
+4. 建立字符串与编号/下标的映射。
+5. 顶点A的总的边权在这道题中定义为所有入边的边权与出边的边权的和。
+
+```cpp
+#include <iostream>
+#include <unordered_map>
+#include <algorithm>
+#include <climits>
+#include <map>
+using namespace std;
+
+
+int N, K, w, n, nGangs, head, maxWeight, nPersons, totalWeight;
+string s1, s2;
+
+unordered_map<string, int> index_;
+unordered_map<int, string> name;
+
+// 注意N是输入的通话记录数，不是结点数。
+// 由于一个名字由3个字母表示，一个字母有A-Z共26种，故结点数最多有26^3=17576个。
+// int graph[1000][1000];
+int graph[17576][17576];
+
+// bool visited[1000];
+bool visited[17576];
+
+void dfs(int v) {
+    nPersons++;
+    visited[v] = true;
+
+    int weightOfV = 0;
+
+    for (int i=0; i<n; i++) {
+        // 注意是有向图。
+        if (graph[v][i] != 0) {
+            if (!visited[i])
+                dfs(i);
+
+            weightOfV += graph[v][i];
+            totalWeight += graph[v][i];
+        }
+        if (graph[i][v] != 0)
+            weightOfV += graph[i][v]; // 因为边不存在表示为0，所以也可以不用判断直接相加，但判断一下代码更具可读性。
+    }
+
+    if (weightOfV > maxWeight) {
+        maxWeight = weightOfV;
+        head = v;
+    }
+}
+
+// head, nPersons
+map<string, int> result;
+
+int main() {
+    int i;
+    scanf("%d %d", &N, &K);
+    s1.resize(4); // 多一个字节存放'\0'。
+    s2.resize(4);
+    // n表示结点数。
+    for (n=i=0; i<N; i++) {
+        scanf("%s %s %d", &s1[0], &s2[0], &w);
+        if (index_.find(s1) == index_.end()) {
+            index_[s1] = n;
+            name[n++] = s1;
+        }
+        if (index_.find(s2) == index_.end()) {
+            index_[s2] = n;
+            name[n++] = s2;
+        }
+        graph[index_[s1]][index_[s2]] = w;
+    }
+    for (i=0; i<n; i++) {
+        if (!visited[i]) {
+            maxWeight = INT_MIN;
+            totalWeight = 0;
+            nPersons = 0;
+            dfs(i);
+            // A "Gang" is a cluster of more than 2 persons who are related to each other with total relation weight being greater than a given threshold K.
+            if (nPersons > 2 && totalWeight>K) {
+                nGangs++;
+                result[name[head]] = nPersons;
+            }
+        }
+    }
+    printf("%d\n", nGangs);
+    for (const auto &p: result)
+        printf("%s %d\n", p.first.c_str(), p.second);
+}
+```
+
+
+## 1072 Gas Station (30 分)
+
+1. 注意仔细看题，理解题意，不要一上来连题意都不理解就马上码代码。
+2. 这道题不能用BFS，因为有边权。
+3. 这里有一点非常重要，不要看到样例输入的是一位数，就可以用`u[1]-'0'`或`u[0]-'0'`这种写法转换成数字，要知道这是样例，测试可能有多位数，所以还是用string存储，然后用string::stoi()进行转换。
+
+```cpp
+#include <iostream>
+#include <climits>
+#include <string>
+using namespace std;
+
+int N, M, K, Ds;
+
+// 不必分配得刚刚好，多分配一点。编号从1开始，先存房子顶点，再存加油站顶点。
+int edge[1020][1020];
+
+int dis[1020];
+bool visited[1020];
+
+void dijkstra(int u) {
+    int v, min_, i;
+    dis[u] = 0;
+    while (true) {
+        min_ = INT_MAX;
+        for (i=1; i<=N+M; i++) {
+            if (!visited[i] && dis[i]<min_) {
+                min_ = dis[i];
+                v = i;
+            }
+        }
+        // 这个条件的退出要求图是连通图，否则还是用`for (i=1; i<=M; i++)`吧。
+        // if (min_ = INT_MAX) // 错误。
+        if (INT_MAX == min_)
+            return;
+        visited[v] = true;
+        for (i=1; i<=N+M; i++) {
+            if (!visited[i] && edge[v][i]!=0) {
+                if (dis[v]+edge[v][i] < dis[i]) { // XXX 注意别写成`if (dis[i] < dis[v]+edge[v][i])`了。
+                    dis[i] = dis[v]+edge[v][i];
+                }
+            }
+        }
+    }
+}
+
+int main() {
+    int i, j, d, x, y;
+    string u, v;
+    scanf("%d %d %d %d", &N, &M, &K, &Ds);
+    for (i=0; i<K; i++) {
+        cin >> u >> v >> d;
+        x = u[0]=='G'? stoi(u.substr(1))+N: stoi(u);
+        y = v[0]=='G'? stoi(v.substr(1))+N: stoi(v);
+        // edge[x][y] = edge[y][x] = Ds; // 注意别写错了。
+        edge[x][y] = edge[y][x] = d;
+    }
+    bool flag;
+    int min_, maxMin_=INT_MIN, res=0, sum, minSum=INT_MAX;
+    for (i=N+1; i<N+1+M; i++) { // 右开减左闭等于区间长度。
+        fill(dis, dis+1020, INT_MAX);
+        fill(visited, visited+1020, false);
+        dijkstra(i);
+        flag = true;
+        min_ = INT_MAX;
+        sum = 0;
+        for (j=1; j<=N; j++) {
+            if (dis[j] > Ds) {
+                flag = false;
+                break;
+            }
+            if (dis[j] < min_) {
+                min_ = dis[j];
+            }
+            sum += dis[j];
+        }
+        if (!flag)
+            continue;
+        if (min_ > maxMin_ || (min_==maxMin_ && sum<minSum)) {
+            maxMin_ = min_;
+            minSum = sum;
+            res = i;
+        }
+    }
+    if (res == 0)
+        printf("No Solution\n");
+    else
+        printf("G%d\n%.1f %.1f\n", res-N, (float)maxMin_, minSum*1.0/N); // 注意将整型转换为浮点型，还有*1.0做浮点数除法。
+}
+```
+
+
+## 1076 Forwards on Weibo (30 分)
+
+```cpp
+#include <iostream>
+#include <set>
+#include <queue>
+using namespace std;
+
+// 边权，用户ID从1开始。
+bool e[1001][1001];
+
+int N, L, M, K, i, j, k, id, amount;
+
+set<int> s;
+
+bool visited[1001];
+
+void bfs(int v) {
+    queue<int> q;
+    int level = 1, x, last=v;
+    q.push(v);
+    visited[v] = true;
+    while (!q.empty() && level<=L) {
+        x = q.front();
+        q.pop();
+        // 注意，visited[i]要在入队的时候更新，而不是出队的时候更新，
+        // 区别在于，如果是后者，考虑level 1已有两个结点在队中，pop()出第一个结点，推入了其指向的结点z，
+        // 然后pop()第二个结点，同样推入了其指向的结点z，这样无法达到剪枝的效果。
+        // 而且更严重的是会重复递增amount。
+        // visited[x] = true;
+        for (int i=1; i<=N; i++) {
+            if (!visited[i] && e[x][i]) { // 注意还要判断有边相连才能将相邻的结点入队。
+                amount++;
+                q.push(i);
+                visited[i] = true;
+            }
+        }
+
+        if (x == last) {
+            last = q.back();
+            level++;
+        }
+    }
+}
+
+int main() {
+    scanf("%d %d", &N, &L);
+    for (i=1; i<=N; i++) {
+        scanf("%d", &M);
+        for (j=0; j<M; j++) {
+            scanf("%d", &k);
+            // 用户i关注用户k，故用户i可以看到用户k发的post，但用户k看不到用户i发的post，
+            // 也就是从用户k到用户i有一条边，即用户k发的post可以传递给用户i看见，而不是反过来。
+            e[k][i] = true;
+        }
+    }
+    scanf("%d", &K);
+    for (i=0; i<K; i++) {
+        scanf("%d", &id);
+        bfs(id);
+        printf("%d\n", amount);
+        amount = 0;
+        for (j=1; j<=N; j++)
+            visited[j] = false;
+    }
+}
+```
+
+
+## 1087 All Roads Lead to Rome (30 分)
+
+1. `nPath[i] += nPath[v]; // 这里要注意，这个语句放在外面`
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <climits>
+#include <map>
+using namespace std;
+
+int N, K, idxOfROM, idxOfStart;
+
+struct City {
+    string name;
+    int weight;
+};
+
+City citys[200];
+
+int edge[200][200];
+
+map<string, int> idx;
+
+int dis[200]; // dis[i]记录v0到vi的最短路径长度，注意，最短路径长度是唯一的。
+bool visited[200];
+int weight[200];
+int nPath[200];
+int pre[200]; // pre[i]记录v0到vi的最短路径上，vi的前驱结点。可能有多条最短路径，所以用vector<int>存储。
+
+void dijkstra(int v0) {
+    int i;
+    dis[v0] = 0;
+    nPath[v0] = 1;
+    int v, min_;
+    while (!visited[idxOfROM]) { // 只要找到v0到idxOfROM的最短路径后，就不必继续寻找最短路径了。
+        min_ = INT_MAX; // 初值：min=max，max=min。
+        for (i=0; i<N; i++) {
+            if (!visited[i] && dis[i]<min_) {
+                min_ = dis[i];
+                v = i;
+            }
+        }
+        visited[v] = true;
+        // 考察以v作为中继点。
+        for (i=0; i<N; i++) {
+            if (!visited[i] && edge[v][i]!=0) {
+                if (dis[v]+edge[v][i] < dis[i]) {
+                    dis[i] = dis[v]+edge[v][i];
+                    weight[i] = weight[v]+citys[i].weight;
+                    pre[i] = v;
+                    nPath[i] = nPath[v];
+                } else if (dis[v]+edge[v][i] == dis[i]) {
+                    if (weight[v]+citys[i].weight > weight[i]) {
+                        weight[i] = weight[v]+citys[i].weight;
+                        pre[i] = v;
+						// nPath[i] += nPath[v]; // 错误。
+                    }
+                    nPath[i] += nPath[v]; // 这里要注意，这个语句放在外面。
+                }
+            }
+        }
+    }
+}
+
+vector<int> path;
+
+void dfs(int v) {
+    if (v == 0) // 不推入罗马结点。
+        return;
+    dfs(pre[v]);
+    path.push_back(v);
+}
+
+int main() {
+    int i, w;
+    string city1, city2;
+    cin >> N >> K >> citys[0].name;
+    for (i=1; i<N; i++) {
+        cin >> citys[i].name >> citys[i].weight;
+        idx[citys[i].name] = i; // 将name映射到下标。
+        dis[i] = INT_MAX; // 使用dijkstra算法必要的初始化。
+    }
+    for (i=0; i<K; i++) {
+        cin >> city1 >> city2 >> w;
+        edge[idx[city1]][idx[city2]] = w;
+        edge[idx[city2]][idx[city1]] = w;
+    }
+    idxOfROM = idx["ROM"];
+    idxOfStart = 0;
+    dijkstra(idxOfStart);
+    dfs(idxOfROM);
+    printf("%d %d %d %d\n", nPath[idxOfROM], dis[idxOfROM], weight[idxOfROM], weight[idxOfROM]/(path.size()));
+    printf("%s", citys[0].name.c_str());
+    for (int x: path)
+        printf("->%s", citys[x].name.c_str());
+}
+```
+
+
+## 1091 Acute Stroke (30 分)
+
+1. 三维bfs。
+
+```cpp
+#include <iostream>
+#include <queue>
+using namespace std;
+
+struct Point {
+    int x, y, z;
+    Point(int a, int b, int c): x(a), y(b), z(c) {}
+    Point() = default;
+};
+
+// 6个方向。
+int X[6] = {1, 0, 0, -1, 0, 0};
+int Y[6] = {0, 1, 0, 0, -1, 0};
+int Z[6] = {0, 0, 1, 0, 0, -1};
+
+int a[60][1286][128];
+
+bool visited[60][1286][128];
+
+int M, N, L, T, ans;
+
+int bfs(int x, int y, int z) {
+    int xx, yy, zz, count=0; // 局部变量记得初始化。
+    Point point;
+    queue<Point> q;
+    q.push(Point(x, y, z));
+    visited[x][y][z] = true; // bfs时，在结点入队时更新相关数据，和在结点出队时才更新相关数据的区别
+    // 在这里，如果是后者，那么就可能重复推入同一个点。
+    while (!q.empty()) {
+        point = q.front();
+        q.pop();
+        count++;
+        // 遍历6个方向。
+        for (int i=0; i<6; i++) {
+            xx = point.x + X[i];
+            yy = point.y + Y[i];
+            zz = point.z + Z[i];
+            if (xx<0 || xx>=L || yy<0 || yy>=M || zz<0 || zz>=N)
+                continue;
+            if (visited[xx][yy][zz] || a[xx][yy][zz]==0)
+                continue;
+            q.push(Point(xx, yy, zz));
+            visited[xx][yy][zz] = true;
+        }
+    }
+    if (count >= T)
+        return count;
+    return 0;
+}
+
+int main() {
+	int i, j, k;
+    scanf("%d %d %d %d", &M, &N, &L, &T);
+    for (i=0; i<L; i++)
+        for (j=0; j<M; j++)
+            for (k=0; k<N; k++)
+                scanf("%d", &a[i][j][k]);
+    for (i=0; i<L; i++) {
+        for (j=0; j<M; j++) {
+            for (k=0; k<N; k++) {
+                if (a[i][j][k]==1 && !visited[i][j][k]) {
+                    ans += bfs(i, j, k);
+                }
+            }
+        }
+    }
+    printf("%d\n", ans);
+}
+```
+
+
+## 1103 Integer Factorization (30 分)
+
+1. 先打表。
+2. 注意读懂题意和分析测试样例，分析测试样例也有助于理解题意。
+3. XXX 一个数N的K-P序列可能有多个，题目要求选择其中最大的序列，最大的意思是：sequence {a1, a2, ……, aK} is said to be larger than {b1, b2, ……, bK} if there exists 1≤L≤K such that ai=bi for i<L and aL>bL. 通过dfs是从最大的那个“因子”开始搜索，从而保证我们可以优先选择到一个“因子和”相等的多个序列中最大的那个序列，从而避免下面注释掉的那一大段代码。
+
+169 5 2
+169 = 6^2 + 6^2 + 6^2 + 6^2 + 5^2
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <climits>
+#include <cmath>
+using namespace std;
+
+vector<int> powerP;
+vector<int> temp;
+vector<int> ans;
+
+// 注意从测试用例和题目给出的描述（12不是169的除法因子）可以看出，题目所说的因子不是除法意义上的因子。
+
+int N, K, P, maxFactorsSum=INT_MIN;
+
+// 先做一个表，防止重复计算。
+// powerP[i]==i^P，XXX i是连续的。
+void init() {
+    powerP.push_back(0); // 不使用下标0，0的次幂没有意义。
+    int x=1;
+    for (int i=2; x<=N; i++) { // 不用sqrt(N)，这样会测试不通过。这也告诉我们，如果sqrt(N)不行，试着用N，反正多计算一些也无所谓。
+        powerP.push_back(x);
+        x = pow(i, P);
+    }
+}
+
+
+// 枚举所有组合，对于一个“因子”，可选，可不选。
+void dfs(int i, int k, int sum_, int factorsSum) {
+    // if (k==K && sum_==N) { // 这个条件设置的不好，这样即使k==K了，如果sum_!=N，也不会终止递归。特别的，没有搞清楚其实`k==K`才是真正的递归终点。
+    if (k == K) {
+        if (sum_ != N)
+            return;
+        // You must output the one with the maximum sum of the factors. If there is a tie, the largest factor sequence must be chosen.
+        if (factorsSum > maxFactorsSum) {
+            maxFactorsSum = factorsSum;
+            ans = temp;
+        /*
+        } else if (factorsSum == maxFactorsSum) {
+            for (i=0; i<temp.size() && i<ans.size(); i++) {
+                if (ans[i] > temp[i])
+                    break;
+                if (temp[i] > ans[i]) {
+                    ans = temp;
+                    break;
+                }
+                // temp[i]==ans[i]，继续比较。
+            }
+            if ((i==temp.size() || i==ans.size()) && temp.size()>ans.size())
+                ans = temp;
+        */
+        }
+        return;
+    }
+
+    for (; i>=1; i--) {
+        if (sum_+powerP[i] <= N) {
+            temp[k] = i; // XXX 可以用“在相同位置覆盖”代替“插入后删除”。
+            // temp.push_back(i);
+            dfs(i, k+1, sum_+powerP[i], factorsSum+i); // 这里传入的i不需要更新，因为下一个递归也可以选或不选“因子”powerP[i]。同一个powerP[i]可以被选用多次。
+            // temp.pop_back();
+        }
+    }
+}
+
+int main() {
+    scanf("%d %d %d", &N, &K, &P);
+    init();
+    temp.resize(K);
+    dfs(powerP.size()-1, 0, 0, 0);
+    if (maxFactorsSum < 0) {
+        printf("Impossible\n");
+        return 0;
+    }
+    printf("%d =", N);
+    int i;
+    for (i=0; i<ans.size()-1; i++)
+        printf(" %d^%d +", ans[i], P);
+    printf(" %d^%d\n", ans[i], P);
+}
+```
+
+
+## 1107 Social Clusters (30 分)
+
+1. 把有相同爱好的人连起来。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <functional>
+using namespace std;
+
+int N, K, i, hobby, cnt, nSubGraph;
+
+// 编号从1开始。
+vector<int> hobbies[1001]; // hobbies[i]存储有爱好i的人的id。
+
+bool edge[1001][1001];
+
+bool visited[1001];
+
+vector<int> cnts;
+
+void dfs(int v) {
+    visited[v] = true;
+    cnt++;
+
+    for (int i=1; i<=N; i++) {
+        if (!visited[i] && edge[v][i]!=0)
+            dfs(i);
+    }
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=1; i<=N; i++) { // 注意编号从1开始，所以循环遍历i从1开始。
+        scanf("%d: ", &K); // 记得把整数之间的非空白符吃掉，不然后面接受整数就会出错。
+        while (K--) {
+            scanf("%d", &hobby);
+            for (int person: hobbies[hobby]) { // 把有相同爱好的人连起来。
+                // 无向图。
+                edge[i][person] = true;
+                edge[person][i] = true;
+            }
+            hobbies[hobby].push_back(i);
+        }
+    }
+    for (i=1; i<=N; i++) {
+        if (!visited[i]) {
+            cnt = 0;
+            dfs(i);
+            cnts.push_back(cnt);
+            nSubGraph++;
+        }
+    }
+    printf("%d\n", nSubGraph);
+    sort(cnts.begin(), cnts.end(), greater<int>());
+    printf("%d", cnts[0]);
+    for (i=1; i<cnts.size(); i++)
+        printf(" %d", cnts[i]);
+}
+```
+
+
+## 1114 Family Property (25 分)
+
+1. 并查集。
+2. 这道题的输入数据有点特别，体现在输入了顶点既有权值，也有的没有权值。有权值的顶点占一行，无权值的顶点附属在有权值的顶点的输入行中。
+3. 很容易忽略了没有权值的顶点。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <unordered_set>
+using namespace std;
+
+int disjoint[10000];
+// int rank[10000]; // 这里不使用按秩合并。而是按id的大小来的合并，因为题目要求输出每一个集合中最小的id。
+
+void make_set() {
+    for (int i=0; i<10000; i++) {
+        disjoint[i] = i; // 初始时，每个结点是一个帮派/集合。
+        // rank[i] = 0;
+    }
+}
+
+// 查，返回i所属集合/帮派的头目。
+int find(int i) {
+    if (disjoint[i] != i)
+        disjoint[i] = find(disjoint[i]); // 递归，通过i的上级找头目。对disjoint[i]重新赋值，实现路径压缩。
+    return disjoint[i];
+}
+
+// 并，将x和y所属的两个集合并为一个集合，即将一个集合的头目作为另一个集合的头目的手下。
+void union_(int x, int y) {
+    int a = find(x);
+    int b = find(y);
+    if (a < b) // id更小的做老大。
+        disjoint[b] = a;
+    else
+        disjoint[a] = b;
+}
+
+struct Node {
+    int id, M, A;
+};
+
+Node a[1000]; // 存储输入的N个有权值的结点。无权值的结点只需记录在disjoint中即可。
+
+struct Result {
+    int id, N, totalM, totalA;
+    double avgM, avgA;
+    bool flag; // 标记Result数组中的某个slot是否被使用。
+};
+
+Result r[10000]; // 默认初始化，以id作为下标。
+
+int N, id, x, y, i, nChilds, M, A, nSet;
+
+// 自动去重。
+unordered_set<int> ids; // 记录输入数据的所有id，包括没有权值的结点的id。
+
+bool cmp(const Result& a, const Result& b) {
+    if (a.avgA != b.avgA) return a.avgA>b.avgA;
+    return a.id<b.id;
+}
+
+int main () {
+    make_set(); // 记得在main中调用初始化函数。
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d %d %d %d", &id, &x, &y, &nChilds);
+        ids.insert(id);
+        if (x != -1) {
+            union_(x, id);
+            ids.insert(x);
+        }
+        if (y != -1) {
+            union_(y, id);
+            ids.insert(y);
+        }
+        while (nChilds--) {
+            scanf("%d", &x);
+            union_(x, id);
+            ids.insert(x);
+        }
+        scanf("%d %d", &a[i].M, &a[i].A);
+        a[i].id = id;
+    }
+    // 累加每个集合的权值。
+    for (i=0; i<N; i++) {
+        id = find(a[i].id);
+        r[id].id = id;
+        r[id].totalM += a[i].M;
+        r[id].totalA += a[i].A;
+        r[id].flag = true;
+        // r[id].N++; // 这里累计的只是有权值的结点。
+    }
+    // 累计每个集合的结点数。
+    for (auto it=ids.begin(); it!=ids.end(); it++)
+        r[find(*it)].N++;
+    // 累计集合数。
+    for (i=0; i<10000; i++) {
+        if (r[i].flag) {
+            r[i].avgM = r[i].totalM*1.0/r[i].N;
+            r[i].avgA = r[i].totalA*1.0/r[i].N;
+            nSet++;
+        }
+    }
+    sort(r, r+10000, cmp);
+    printf("%d\n", nSet);
+    for (i=0; i<nSet; i++)
+        printf("%04d %d %.3lf %.3lf\n", r[i].id, r[i].N, r[i].avgM, r[i].avgA);
+}
+```
+
+
+## 1118 Birds in Forest (25 分)
+
+1. 查看两个元素是否属于同一集合，可考虑并查集。
+2. 注意用set/map去重。
+
+```cpp
+#include <iostream>
+#include <unordered_set>
+using namespace std;
+
+// the birds in all the pictures are numbered continuously from 1 to some number that is no more than 10^4.
+int parent[10001];
+int ranks[10001];
+
+void make_set() {
+    for (int i=0; i<10001; i++) {
+        parent[i] = i; // 初始时每个单位是一个集合。
+        ranks[i] = 0;
+    }
+}
+
+int find(int x) {
+    if (parent[x] != x)
+        parent[x] = find(parent[x]); // 对disjoint[x]重新赋值，路径压缩。
+    return parent[x];
+}
+
+void union_(int x, int y) {
+    int a = find(x);
+    int b = find(y);
+    if (ranks[a] > ranks[b]) { // 按秩合并。
+        parent[b] = a;
+    } else {
+        parent[a] = b;
+        if (ranks[a] == ranks[b])
+            ranks[b]++;
+    }
+}
+
+int N, i, K, x, y;
+
+unordered_set<int> birds;
+unordered_set<int> sets;
+
+int main() {
+    make_set();
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d %d", &K, &x);
+        birds.insert(x);
+        while (--K) {
+            scanf("%d", &y);
+            union_(x, y);
+            birds.insert(y);
+        }
+    }
+    // 统计集合个数。
+    for (auto it=birds.begin(); it!=birds.end(); it++)
+        sets.insert(find(*it));
+    printf("%d %d\n", sets.size(), birds.size());
+    scanf("%d", &N);
+    while (N--) {
+        scanf("%d %d", &x, &y);
+        if (find(x) == find(y))
+            printf("Yes\n");
+        else
+            printf("No\n");
+    }
+}
+```
+
+
+## 1122 Hamiltonian Cycle (25 分)
+
+1. 这道题的一个坑点在于，结点数最多200个，但输入的汉密尔顿回路的结点个数，若是合法的回路，则结点数至少为201，不合法的则可能更多，如果用201的数组存储，可能越界，一些数据存储不了。
+2. 不知道问什么，本应该越界crash，测试却报出结果错误。
+
+```
+#include <iostream>
+#include <unordered_set>
+using namespace std;
+
+bool edge[201][201]; // 结点从1开始编号。
+
+int v[201];
+
+int N, M, K, i, n, x, y;
+
+bool flag;
+
+unordered_set<int> s;
+
+int main() {
+    scanf("%d %d\n", &N, &M);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &x, &y);
+        edge[x][y] = edge[y][x] = true; // 无向图。
+    }
+    scanf("%d", &K);
+    while (K--) {
+        flag = true;
+        scanf("%d", &n);
+        /*
+         * 注意，即使提前就能判断不是汉密尔顿回路，也要接受剩下的输入，不然下一次循环就乱套了。
+        if (n-1 != N) {
+            printf("NO\n");
+            continue;
+        }
+        */
+        for (i=0; i<n; i++) {
+            scanf("%d", &v[i]);
+            s.insert(v[i]);
+        }
+        // 汉密尔顿回路必须：
+        // 1. 头尾相同。
+        // 2. 遍历所有结点。
+        // 3. 所有结点被访问一次且仅一次。
+        // 4. 哈密尔顿回路的结点数比图中结点数多一个，这个结点就是起始结点也是终止结点。
+        // 5. 利用set的去重功能，判定所有结点都被访问一次且仅一次。
+        // 6. 连接结点的边必须存在。
+        if (n-1!=N || s.size()!=N || v[0]!=v[n-1])
+            flag = false;
+        for (i=0; flag && i<n-1; i++) {
+            if (!edge[v[i]][v[i+1]])
+                flag = false;
+        }
+        printf(flag? "YES\n": "NO\n");
+        s.clear();
+    }
+}
+```
+
+
+## 1126 Eulerian Path (25 分)
+
+1. 要注意输入的图不连通/有多个连通分量的情况。
+2. 注意，单纯判断是否存在度为0的结点无法判断图是否不连通，因为可能一个图存在两个连通分量，但确实没有度为0的结点，即每个连通分量至少有两个或两个以上互连的结点。
+3. 使用并查集时，写完make_set()，在main()中马上调用，不然很容易忘。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int N, M, i, nEven, nOdd, a, b, nConnected=1;
+
+int degree[501]; // 结点编号从1开始。
+
+// 这里有一个情况是输入的图不连通，那肯定不存在欧拉路或欧拉回路。
+// 注意，单纯判断是否存在度为0的结点无法判断图是否不连通，因为可能一个图存在两个连通分量，但确实没有度为0的结点，即每个连通分量至少有两个或两个以上互连的结点。
+//
+// 判断一个图是否连通，可以用dfs次数，或用并查集查看集合个数。
+
+int disjoint[501];
+int rank_[501];
+
+void make_set() {
+    for (int i=0; i<501; i++) {
+        disjoint[i] = i;
+        // rank_[i] = 0; // 全局变量，默认初始化。
+    }
+}
+
+int find(int i) {
+    if (disjoint[i] != i)
+        disjoint[i] = find(disjoint[i]);
+    return disjoint[i];
+}
+
+void union_(int x, int y) {
+    int a = find(x);
+    int b = find(y);
+    if (rank_[a] > rank_[b])
+        disjoint[b] = a;
+    else {
+        disjoint[a] = b;
+        if (rank_[a] == rank_[b])
+            rank_[b]++;
+    }
+}
+
+int main() {
+    make_set();
+    scanf("%d %d", &N, &M);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &a, &b);
+        degree[a]++;
+        degree[b]++;
+        union_(a, b);
+    }
+    int p = find(1);
+    printf("%d", degree[1]);
+    for (i=2; i<=N; i++) {
+        printf(" %d", degree[i]);
+        if (find(i) != p)
+            nConnected++;
+    }
+    for (i=1; i<=N; i++) {
+        if (degree[i]%2)
+            nOdd++;
+        else
+            nEven++;
+    }
+    if (nConnected==1 && nEven == N)
+        printf("\nEulerian\n");
+    else if (nConnected==1 && nOdd == 2)
+        printf("\nSemi-Eulerian\n");
+    else
+        printf("\nNon-Eulerian\n");
+}
+```
+
+
+## 1131 Subway Map (30 分)
+
+0. XXX 单源无权最短路径可以用bfs和dfs，因为要记录路径，所以这里用dfs。
+1. 单个结点可能对应多条线路，单个结点无法唯一确定它所在的路线，如交叉结点，如果两个结点呢？显然，两个结点可以唯一确定一条线路。
+2. 如果可以根据输入获取一个结点关联的所有结点，并且无边权，或者边权都一样，那么就可以考虑用邻接表来存储图。
+3. 如果没有边权和点权，或都相等，那就没必要用dijkstra算法求最短路径了，可直接用dfs。
+4. 注意`printf("Take Line#%d from %4d to %4d.\n", pre, x, shortest[i-1]);`和`printf("Take Line#%d from %04d to %04d.\n", pre, x, shortest[i-1]);`的区别。
+5. 当反复确定程序逻辑没问题，又找不出原因时，可以检查一下输出语句的格式是否符合题目要求。
+6. 记录两点所在的直线的id，可以用lineNO[10000][10000]，但这样如果结点数较少，就会导致内存利用率不高，可以用unordered_map，做一个hash函数，如a*10000+b。
+7. 如果思路和大佬差不多，但代码过不了所有测试，比较大佬的代码找不出原因，可以用大佬的代码来逐步按自己的代码改，直到无法通过测试，从而找到问题。
+
+```cpp
+#include <iostream>
+#include <climits>
+#include <vector>
+#include <unordered_map>
+using namespace std;
+
+// int times[10000]; // 出现次数大于1的就是不同路线的交叉点。
+// vector<int> line[10000]; // line[i]表示站i所属的线路，站i可能属于多条线路。`line[i].size()>1`表示这是一个交叉点。
+
+int N, M, K, i, j, x, y, src, dst, shortestLen=INT_MAX, minTransfer=INT_MAX;
+
+// int edge[10000][10000];
+// 如果可以根据输入获取一个结点关联的所有结点，并且无边权，或者边权都一样，那么就可以考虑用邻接表来存储图。
+unordered_map<int, vector<int>> graph;
+
+// int line[10000][10000]; // 单个结点可能对应多条线路，单个结点无法唯一确定它所在的路线，如交叉结点，如果两个结点呢？显然，两个结点可以唯一确定一条线路。
+unordered_map<int, int> line;
+
+int hash_(int a, int b) {
+    return a*10000+b;
+}
+
+vector<int> path, shortest;
+
+bool visited[10000];
+
+int getTransfer() {
+    int cnt = 0, pre = line[hash_(path[0], path[1])];
+    for (i=2; i<path.size(); i++) {
+        if (line[hash_(path[i-1], path[i])] != pre) {
+            cnt++;
+            pre = line[hash_(path[i-1], path[i])];
+        }
+    }
+    return cnt;
+}
+
+void dfs(int v) {
+    if (v == dst) {
+        if (path.size()<shortestLen || (path.size()==shortestLen && getTransfer()<minTransfer)) {
+            shortest = path;
+            shortestLen = shortest.size();
+            minTransfer = getTransfer();
+        }
+        return;
+    }
+    if (path.size() >= shortestLen)
+        return;
+    visited[v] = true;
+    for (int x: graph[v]) {
+        if (!visited[x]) {
+            path.push_back(x);
+            dfs(x);
+            path.pop_back();
+        }
+    }
+    visited[v] = false;
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=1; i<=N; i++) { // 路线从1开始编号。
+        scanf("%d %d", &M, &x);
+        for (j=1; j<M; j++) {
+            scanf("%d", &y);
+            graph[x].push_back(y);
+            graph[y].push_back(x);
+            // line[x][y] = line[y][x] = i;
+            line[hash_(x, y)] = line[hash_(y, x)] = i;
+            x = y;
+        }
+    }
+    scanf("%d", &K);
+    while (K--) {
+        scanf("%d %d", &src, &dst);
+        shortestLen = INT_MAX;
+        minTransfer = INT_MAX;
+        path.clear(); // 多次查询，记得清空容器，避免影响下次查询。
+        path.push_back(src);
+        dfs(src);
+        printf("%d\n", shortest.size()-1);
+        int pre = line[hash_(shortest[1], shortest[0])];
+        for (x=shortest[0], i=2; i<shortest.size(); i++) {
+            if (line[hash_(shortest[i], shortest[i-1])] != pre) {
+                printf("Take Line#%d from %04d to %04d.\n", pre, x, shortest[i-1]);
+                x = shortest[i-1];
+                pre = line[hash_(shortest[i], shortest[i-1])];
+            }
+        }
+        printf("Take Line#%d from %04d to %04d.\n", pre, x, shortest.back());
+        /*
+        for (const auto& p: graph)
+            visited[p.first] = false;
+        */
+    }
+}
+```
+
+
+## 1134 Vertex Cover (25 分)
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int N, M, K, i, a, b, Nv;
+
+bool flag;
+
+// 没有边权，且输入给出了每个点关联的所有点，可用邻接表存储。
+vector<vector<int>> graph;
+
+vector<int> vertexSet;
+
+int main() {
+    // N个结点，结点从0开始编号。
+    scanf("%d %d", &N, &M);
+    graph.resize(N);
+    vertexSet.resize(N);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &a, &b);
+        // 无向图。
+        graph[a].push_back(b);
+        graph[b].push_back(a);
+    }
+    scanf("%d", &K);
+    while (K--) {
+        scanf("%d", &Nv);
+        for (i=0; i<Nv; i++) {
+            // scanf("%d", &vertexSet[i]);
+            // 不顺序存储结点ID，而以结点ID作为下标，值为1表示该结点属于当前输入的结点集，0反之。
+            scanf("%d", &a);
+            vertexSet[a] = 1;
+        }
+        flag = true;
+        for (i=0; flag && i<N; i++) {
+            // 以结点cover中的结点出发的边必满满足"each edge of the graph is incident to at least one vertex of the set"。
+            // 所以主要考察不以结点cover中的结点出发的边。
+            if (vertexSet[i] == 1)
+                continue;
+            for (int x: graph[i]) {
+                if (vertexSet[x] != 1) {
+                    flag = false;
+                    break;
+                }
+            }
+        }
+        if (flag)
+            printf("Yes\n");
+        else
+            printf("No\n");
+        for (i=0; i<N; i++) // 多轮查询，一轮结束后，记得重置一些变量。
+            vertexSet[i] = 0;
+    }
+}
+```
+
+
+## 1139 First Contact (30 分)
+
+1. 因为题目保证一个人只有一个性别，所以只需全部存储为正数即可。
+2. 不用bfs了，直接双层循环更简便。
+
+```cpp
+#include<bits/stdc++.h>
+using namespace std;
+
+int n,m,k;
+const int maxn = 10000; //提示!!N小于1000，用矩阵
+bool re[maxn][maxn]; //标记是否有关系
+vector<int> G[maxn]; //保存其同性
+bool cmp(pair<int, int> x, pair<int,int> y){
+    if(x.first != y.first) return x.first < y.first;
+    return x.second < y.second;
+}
+
+int main(){
+    scanf("%d%d",&n,&m);
+    string a,b;
+    for(int i=0;i<m;i++){
+        cin>>a>>b;
+        re[abs(stoi(a))][abs(stoi(b))] = true;
+        re[abs(stoi(b))][abs(stoi(a))] = true;
+        if(a.length() == b.length()){ //长度相等说明是同性
+            G[abs(stoi(a))].push_back(abs(stoi(b))); //用abs来减少判断代码
+            G[abs(stoi(b))].push_back(abs(stoi(a)));
+        }
+    }
+    scanf("%d",&k);
+    while(k--){
+        int a,b;
+        cin>>a>>b;
+        vector<pair<int,int> > ans;
+        int cnt = 0;
+        //从两者的同性人中找
+        for(int i=0;i<G[abs(a)].size();i++){
+            int c = G[abs(a)][i];
+            if(c == abs(b)) continue;
+            for(int j=0;j<G[abs(b)].size();j++){
+                int d = G[abs(b)][j];
+                if(d == abs(a)) continue;
+                if(re[c][d]){
+                    cnt++;
+                    ans.push_back(make_pair(c,d));
+                }
+            }
+        }
+        sort(ans.begin(), ans.end(), cmp);
+        printf("%d\n",cnt);
+        for(int i=0;i<ans.size();i++){
+            printf("%04d %04d\n", ans[i].first, ans[i].second);
+        }
+    }
+}
+```
+
+
+## 1146 Topological Order (25 分)
+
+1. 只有有向无环图才有拓扑序列，拓扑序列可通过对有向无环图应用拓扑排序获得，循环执行一下的步骤，每次选择一个入度为0的结点，删去它及所有出边，直到所有结点都被删去。
+2. 没有边权且输入给出了一个结点指向的所有结点，故可用邻接表存储图，另外还要存储每个结点的入度。
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+vector<vector<int>> graph;
+
+vector<int> inDegree;
+
+vector<int> a;
+
+vector<int> result;
+
+int main() {
+    int N, M, K, i, j, x, y;
+    scanf("%d %d", &N, &M);
+    graph.resize(N+1); // 结点从1开始编号。
+    inDegree.resize(N+1); // 注意，没有默认初始化。
+    fill(inDegree.begin(), inDegree.end(), 0);
+    a.resize(N);
+    while (M--) {
+        scanf("%d %d", &x, &y);
+        graph[x].push_back(y); // 有向图。
+        inDegree[y]++;
+    }
+    scanf("%d", &K);
+    vector<int> temp;
+    for (i=0; i<K; i++) {
+        // 根据实际情况，这里选择全部接受完输入再处理。
+        for (j=0; j<N; j++)
+            scanf("%d", &a[j]);
+        temp = inDegree;
+        for (j=0; j<N; j++) {
+            // 判断选择的这个顶点的入度是否为零。
+            if (temp[a[j]] != 0) {
+                result.push_back(i);
+                break;
+            }
+            // 删除该顶点的出边，即递减该顶点指向的顶点的入度。
+            for (int x: graph[a[j]])
+                temp[x]--;
+        }
+    }
+    printf("%d", result[0]);
+    for (i=1; i<result.size(); i++)
+        printf(" %d", result[i]);
+}
+```
+
+
+## 1150 Travelling Salesman Problem (25 分)
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <string>
+#include <climits>
+using namespace std;
+
+int edge[201][201]; // 结点从1开始编号。
+
+int path[2000]; // 虽然结点数最多200个，但输入的路径，结点可以重复，所以要多分配一些空间。
+
+bool visited[201];
+
+string types[3] = {"TS simple cycle", "TS cycle", "Not a TS cycle"};
+
+int main() {
+    int N, M, K, i, j, src, dst, dist, n, type, totalDist, flag, minDist=INT_MAX, minPath;
+    scanf("%d %d", &N, &M);
+    while (M--) {
+        scanf("%d %d %d", &src, &dst, &dist);
+        edge[src][dst] = edge[dst][src] = dist; // 无向图。
+    }
+    scanf("%d", &K);
+    for (i=1; i<=K; i++) {
+        scanf("%d", &n);
+        for (j=0; j<n; j++) {
+            scanf("%d", path+j);
+            visited[path[j]] = true;
+        }
+        totalDist = 0;
+        flag = true;
+        for (j=1; j<n; j++) {
+            if (edge[path[j]][path[j-1]] == 0) {
+                flag = false;
+                break;
+            }
+            totalDist += edge[path[j]][path[j-1]];
+        }
+        for (j=1; j<=N && visited[j]; j++)
+            ;
+        if (path[0]!=path[n-1] || j!=N+1 || !flag)
+            type = 2;
+        else if (n-1 == N)
+            type = 0;
+        else
+            type = 1;
+        printf("Path %d: ", i);
+        if (flag)
+            printf("%d (", totalDist);
+        else
+            printf("NA (");
+        printf("%s)\n", types[type].c_str());
+        if (flag && (type==1 || type==0) && totalDist<minDist) {
+            minDist = totalDist;
+            minPath = i;
+        }
+        fill(visited+1, visited+1+n, false);
+    }
+    printf("Shortest Dist(%d) = %d\n", minPath, minDist);
+}
+```
+
+
+## 1154 Vertex Coloring (25 分)
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <unordered_set>
+using namespace std;
+
+vector<vector<int>> graph;
+
+vector<int> colors;
+
+unordered_set<int> nColors;
+
+int main() {
+    int N, M, K, i, x, y;
+    bool flag;
+    scanf("%d %d", &N, &M);
+    graph.resize(N); // 结点从0开始编号。
+    colors.resize(N);
+    while (M--) {
+        scanf("%d %d", &x, &y);
+        graph[x].push_back(y);
+        // graph[y].push_back(x); // 虽然是无向图，但只是为了解决这道题，只需要存一个就行了，还能提高算法效率。
+    }
+    scanf("%d", &K);
+    while (K--) {
+        for (i=0; i<N; i++) {
+            scanf("%d", &colors[i]);
+            nColors.insert(colors[i]); // 用set存储，用于统计不同颜色的数目。
+        }
+        flag = true;
+        for (i=0; flag && i<N; i++) {
+            for(int x: graph[i]) {
+                if (colors[x] == colors[i]) {
+                    flag = false;
+                    break;
+                }
+            }
+        }
+        if (flag) {
+            printf("%d-coloring\n", nColors.size());
+        } else {
+            printf("No\n");
+        }
+        nColors.clear();
+    }
+}
+```
+
+
+## 1155 Heap Paths (30 分)
+
+1. 计数器的使用。
+2. 也可以单独用一个函数，从最后一个父结点开始，判断是否符合堆的性质，然后递推到根。
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int cbt[1001];
+
+int N;
+
+vector<vector<int>> paths;
+
+vector<int> path;
+
+void dfs(int root) {
+    path.push_back(cbt[root]);
+    if (root*2+1>N && root*2>N) {
+        paths.push_back(path);
+    }
+    if (root*2+1 <= N)
+        dfs(root*2+1); // 按照题目的打印要求，先遍历右子堆。
+    if (root*2 <= N)
+        dfs(root*2);
+    path.pop_back();
+}
+
+int main() {
+    int i, n1, n2, totalN1, totalN2, total;
+    scanf("%d", &N);
+    for (i=1; i<=N; i++) // 完全二叉树用数组存储，下标要从1开始，否则2*i会失效。
+        scanf("%d", cbt+i);
+    dfs(1);
+    totalN1 = totalN2 = total = 0;
+    for (auto& path: paths) {
+        n1 = n2 = 1; // 两个计数器。
+        printf("%d", path[0]);
+        for (i=1; i<path.size(); i++) {
+            printf(" %d", path[i]);
+            if (path[i] > path[i-1])
+                n1++;
+            else
+                n2++;
+        }
+        printf("\n");
+        totalN1 += n1;
+        totalN2 += n2;
+        total += path.size();
+    }
+	// 必须要所有路径都满足升序或降序，所以放在循环外面判断。
+    if (totalN2 == total)
+        printf("Max Heap\n");
+    else if (totalN1 == total)
+        printf("Min Heap\n");
+    else
+        printf("Not Heap\n");
+}
+```

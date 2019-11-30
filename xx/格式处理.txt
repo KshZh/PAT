@@ -1,0 +1,615 @@
+## 1001 A+B Format (20 分)
+
+1. 因为根据题目给出的数字范围，最多需要两个逗号，这种是可以枚举的，直接枚举，而不需要模拟从低位到高位每数三个数，插入一个逗号的过程。
+2. 格式化字符串，或者将数字转换为有格式的字符串，善用printf, sprintf等函数。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int a, b, c, d;
+    cin >> a >> b;
+    c = a + b;
+    d = c>0?c:-c;
+    if (d < 1000)
+        printf("%d\n", c);
+    else if (d < 1000000)
+        // 只有最高的三位要带符号，后面的三位组不用带符号。
+        printf("%d,%03d\n", c/1000, d%1000); // %1000得到的必然是小于1000的数。
+    else if (d >= 1000000)
+        printf("%d,%03d,%03d\n", c/1000000, (d/1000)%1000, d%1000);
+    return 0;
+}
+```
+
+
+## 1005 Spell It Right (20 分)
+
+1. 注意考察边界情况，比如题目给出N的范围是[0, 10^100]，所以最简单的边界就是区间端点，也就是说0和10^100，特别是0。
+
+```cpp
+#include <iostream>
+#include <string>
+#include <vector>
+using namespace std;
+
+string number[10] = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"};
+
+int main() {
+    // 题目提到，输入N是一个小于10^100的数，计算机没有一个这样的整数类型可以存放这么大范围的数，
+    // 故不能用scanf("%d", s)，而应将其作为字符串读入。
+    string s;
+    int v[10100] = {0};
+    int sum = 0, i = 0;
+    cin >> s;
+    for (char c: s) {
+        sum += (c-'0');
+    }
+    /*
+    while (sum) {
+        v[i] = sum%10;
+        sum /= 10;
+        i++;
+    }
+    */
+    // 注意，如果sum为0，就要输出zero，上面的循环使得没有任何输出。
+    do {
+        v[i] = sum%10;
+        sum /= 10;
+        i++;
+    } while(sum);
+    for (i=i-1; i>0; i--) // 从高位开始输出。
+        cout << number[v[i]] << ' ';
+    cout << number[v[i]] << endl;
+}
+```
+
+
+## 1060 Are They Equal (25 分)
+
+1. 注意找到第一个有效数字的方法，`s.find_first_not_of("0.")`，其中关于find_first_not_of()的行为的描述是：Finds the first character equal to none of characters in str.
+2. 注意小数点可能在第一个有效数字前面，也可能在第一个有效数字后面。
+3. .002中的0不是有效数字，.303中的0就是有效数字。
+4. 格式化的要点是获取尾数（准确是N位有效数字）和获取指数。
+5. 值得一看。
+6. api：
+
+find
+rfind
+find_first_of
+find_first_not_of
+find_last_of
+find_last_not_of
+它们的参数都是至少接收一个string或一个char，然后有一个可选的pos形参，是下标（不是迭代器），最后一个可选count形参。另外rfind的pos表示从pos开始逆向查找。
+
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+int N, n1, n2, i, pos_dot, pos_first_sig, k;
+string s1, s2;
+
+// 计算*10^k中的k。
+int getK(const string& s) {
+    if ((pos_dot=s.find('.')) == string::npos)
+        pos_dot = s.size();
+    // XXX 注意这个找到第一个有效数字的方法。
+    if ((pos_first_sig=s.find_first_not_of("0.")) == string::npos) {
+        return 0;
+    }
+    // pos_dot指向'.'，pos_first_sig指向第一个有效数字字符。
+    int k = pos_dot - pos_first_sig;
+    if (k < 0) // 小数点在最前面。
+        k++;
+    return k;
+}
+
+// 获取0.d1...dN中的d1...dN。
+string getStd(const string& s, int N) {
+    pos_first_sig = s.find_first_not_of("0.");
+    string temp;
+    for (int i=pos_first_sig; i<s.size() && N; i++) {
+        if (s[i] != '.') { // 小数点可能在pos_first_sig后面，所以这个判断是必须的。
+            temp.push_back(s[i]);
+            N--;
+        }
+    }
+    // 有效数字不足N位，补0。
+    while (N--) {
+        temp.push_back('0');
+    }
+    return temp;
+}
+
+string getRes(const string& s, int N) {
+    // 获取尾数和获取指数。
+    return "0." + getStd(s, N) + "*10^" + to_string(getK(s));
+}
+
+int main() {
+    cin >> N >> s1 >> s2;
+    s1 = getRes(s1, N);
+    s2 = getRes(s2, N);
+    if (s1 == s2)
+        cout << "YES " << s1 << endl;
+    else
+        cout << "NO " << s1 << " " << s2 << endl;
+}
+```
+
+
+## 1061 Dating (20 分)
+
+1. 虽然字符相等，但是超过范围了，只能继续查找！
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+int i, j;
+
+string s1, s2, s3, s4;
+
+string day[7] = {"MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"};
+
+int main() {
+    cin >> s1 >> s2 >> s3 >> s4;
+    for (j=i=0; i<s1.size() && i<s2.size(); i++) {
+        if (s1[i] == s2[i]) {
+            if (j == 0) {
+                if (s1[i]>='A' && s1[i]<='G') { // 字符的范围要控制好，一个星期七天，所以范围是['A', 'G']，如果范围过大，就会提前选上一些不符合的字符，然后后面符合的字符就没机会选中了。
+                    printf("%s ", day[s1[i]-'A'].c_str());
+                    j++;
+                }
+            } else if (j == 1) {
+                if (s1[i]>='A' && s1[i]<='N') {
+                    printf("%02d:", s1[i]-'A'+10);
+                    break;
+                } else if (s1[i]>='0' && s1[i]<='9') {
+                    printf("%02d:", s1[i]-'0');
+                    break;
+                } /*else { // 虽然字符相等，但是超过范围了，只能继续查找！
+                    break;
+                }*/
+            }
+        }
+    }
+    for (i=0; i<s3.size() && i<s4.size(); i++) {
+        if (s3[i] == s4[i] && ((s3[i]>='a' && s3[i]<='z') || (s3[i]>='A' && s3[i]<='Z'))) {
+            printf("%02d\n", i);
+            break;
+        }
+    }
+}
+```
+
+
+## 1073 Scientific Notation (20 分)
+
+1. `[+-][1-9].[0-9]+E[+-][0-9]+`，两个正负号一定会有，一定是一个[1-9]的数加一个小数点。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+string s;
+
+int main() {
+    int i, j;
+    cin >> s;
+    if (s[0] == '-')
+        cout << '-';
+    s = s.substr(1);
+    auto epos = s.find("E");
+    int exp = stoi(s.substr(epos+1));
+    int dotpos = 1;
+    // 尾数因为非常大，所以就不能用stof, stod, stofd了。
+    if (exp > 0) {
+        int n = epos - (dotpos+1); // 右开减左闭等于区间长度。
+        if (n > exp) {
+            // 不需要补零，小数点右移。
+            cout << s[0] << s.substr(dotpos+1, exp) << '.' << s.substr(dotpos+1+exp, n-exp);
+        } else {
+            // 可能补零，去掉小数点。
+            cout << s[0] << s.substr(dotpos+1, n);
+            for (i=0; i<exp-n; i++)
+                cout << '0';
+        }
+    } else if (exp < 0) {
+        int n = -exp-1;
+        cout << "0.";
+        for (i=0; i<n; i++)
+            cout << '0';
+        cout << s[0] << s.substr(dotpos+1, epos-(dotpos+1));
+    } else {
+        // 指数为0。
+        cout << s.substr(0, epos); // 右开减左闭等于区间长度。
+    }
+    cout << endl;
+}
+```
+
+
+## 1082 Read Number in Chinese (25 分)
+
+1. 边界测试，"-0"->"ling", "0"->"ling"，"-10301234"。
+2. 遇到这种题就认了吧。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+string num;
+
+// 每4位一组，组内包含千、百、十。组外包含亿、万。
+// 第一个组内，前导零不用读出来，其它组内的前导零要读出来。然后，零后面跟的都是零，那么也不用读出来，否则要读出来。
+
+string digits[10] = {" ling", " yi", " er", " san", " si", " wu", " liu", " qi", " ba", " jiu"};
+
+string unit1[3] = {"", " Wan", " Yi"};
+
+string unit2[4] = {"", " Shi", " Bai", " Qian"};
+
+bool flag = true; // 控制打印格式。
+bool printZero = false;
+
+// 参数是一个四位组。
+void foo(const string& s, int group) {
+    size_t i=0, n=s.size();
+    if (s[0] == '0') {
+        i = s.find_first_not_of("0");
+        if (i==string::npos)
+            return;
+        if (printZero)
+            printf(" ling");
+        if (!printZero)
+            printZero = true;
+        n = s.size();
+    } else {
+        printZero = true;
+    }
+    for (; i<n; i++) {
+        if (s[i] == '0') {
+            while (s[i]=='0' && i<n)
+                i++;
+            if (i == n) {
+                printf("%s", unit1[group].c_str());
+                return;
+            } else {
+                printf(" ling");
+            }
+            i--;
+        } else {
+            printf("%s%s", flag? digits[s[i]-'0'].substr(1).c_str(): digits[s[i]-'0'].c_str(), unit2[n-i-1].c_str());
+            flag = false;
+        }
+    }
+    printf("%s", unit1[group].c_str());
+}
+
+int main() {
+    cin >> num;
+    if (num == "-0") {
+        printf("ling\n");
+        return 0;
+    }
+    if (num[0] == '-') {
+        cout << "Fu ";
+        num = num.substr(1);
+    }
+    // 一位数，直接处理，不然下面的算法无法处理"-0"和"0"的情况。
+    if (num.size() == 1) {
+        printf("%s\n", digits[num[0]-'0'].substr(1).c_str());
+        return 0;
+    }
+    auto n = num.size();
+    if (n > 8) {
+        foo(num.substr(0, n-8), 2);
+        num = num.substr(n-8);
+        n = num.size();
+    }
+    if (n > 4) {
+        foo(num.substr(0, n-4), 1);
+        num = num.substr(n-4);
+        n = num.size();
+    }
+    foo(num, 0);
+    printf("\n");
+}
+```
+
+
+## 1100 Mars Numbers (20 分)
+
+1. 打表。
+
+```cpp
+#include <iostream>
+#include <string>
+#include <cctype>
+#include <unordered_map>
+using namespace std;
+
+// 13进制的第0位。
+string zero[13] = {"tret", "jan", "feb", "mar", "apr", "may", "jun", "jly", "aug", "sep", "oct", "nov", "dec"};
+// 13进制的第1位。
+string one[13] = {"", "tam", "hel", "maa", "huh", "tou", "kes", "hei", "elo", "syy", "lok", "mer", "jou"};
+
+int N, x, i;
+
+string line;
+
+unordered_map<string, int> m;
+
+void init() {
+    for (int i=0; i<13; i++) {
+        m[zero[i]] = i;
+        m[one[i]] = i*13; // 1*13, 2*13, ..., 12*13。
+    }
+    // 排列组合，先把表做好，后面可以直接查表。
+    for (int i=0; i<13; i++) {
+        for (int j=0; j<13; j++)
+            m[one[i] + " " + zero[j]] = i*13+j;
+    }
+}
+
+int main() {
+    init();
+    scanf("%d\n", &N); // 最好把\n吃掉。
+    while (N--) { // 因为后面不需要用到N了，所以可以在这里把N“消耗掉”。
+        getline(cin, line);
+        if (isdigit(line[0])) {
+            x = stoi(line);
+            if (x < 13) {
+                printf("%s\n", zero[x].c_str());
+            } else if (x%13 == 0) { // XXX 如果是13的整数倍，只需要输出一个词即可。
+                // printf("%s\n", one[x%13].c_str()); // 取低位，错。
+                printf("%s\n", one[x/13].c_str()); // 取高位。
+            } else {
+                printf("%s %s\n", one[x/13].c_str(), zero[x%13].c_str()); // 注意先输出高位，再输出低位。
+            }
+        } else {
+            printf("%d\n", m[line]);
+        }
+    }
+}
+```
+
+
+## 1105 Spiral Matrix (25 分)
+
+1. 大佬的代码，tql：http://lulalap.com/2018/11/28/PAT-A1105-cpp/
+
+```cpp
+#include <cstdio>
+#include <cmath>
+#include <cstring>
+#include <algorithm>
+using namespace std;
+bool cmp(int a, int b){ return a > b; }
+int main(){
+  int N, S[10010];
+  scanf("%d", &N);
+  int n = (int)sqrt(1.0 * N);
+  while(N % n != 0) n--;
+  int m = N / n;
+  int ans[m][n];
+  memset(ans,0,sizeof(ans));//用于判断是否被赋值过
+  for(int i = 0; i < N; i++) scanf("%d", &S[i]);
+  sort(S, S + N, cmp);
+  int i = 0, j = 0, k = 0;
+  ans[i][j] = S[k++];//第一个赋值
+  while(k < N){
+    while(j < n - 1 && !ans[i][j+1]) ans[i][++j] = S[k++];//从左向右
+    while(i < m - 1 && !ans[i+1][j]) ans[++i][j] = S[k++];//从上向下
+    while(j > 0 && !ans[i][j-1]) ans[i][--j] = S[k++];//从右往左
+    while(i > 0 && !ans[i-1][j]) ans[--i][j] = S[k++];//从下往上
+  }
+  for(int i = 0; i < m; i++){
+    for(int j = 0; j < n; j++){
+      if(j != 0) printf(" ");
+      printf("%d", ans[i][j]);
+    }
+    printf("\n");
+  }
+  return 0;
+}
+```
+
+
+## 1108 Finding Average (20 分)
+
+```cpp
+#include <iostream>
+#include <string>
+#include <cctype>
+using namespace std;
+
+int N, cnt;
+
+double sum, x;
+
+string s;
+
+bool judge() {
+    auto dotPos = s.find(".");
+    if (dotPos!=string::npos && s.size()-(dotPos+1)>2) // 右开减左闭等于区间长度。
+        return false;
+    auto signPos = s.find("-");
+    if (signPos!=string::npos && signPos!=0)
+        return false;
+    for (int i=0; i<s.size(); i++) {
+        if (s[i]!='-' && s[i]!='.' && !isdigit(s[i]))
+            return false;
+    }
+    x = stod(s);
+    if (x>1e3 || x<-1e3)
+        return false;
+    return true;
+}
+
+int main() {
+    cin >> N;
+    while (N--) {
+        cin >> s;
+        if (judge()) {
+            sum += x;
+            cnt++;
+        } else {
+            printf("ERROR: %s is not a legal number\n", s.c_str());
+        }
+    }
+    if (cnt == 0) {
+        // In case the average cannot be calculated, output Undefined instead of Y.
+        printf("The average of 0 numbers is Undefined\n");
+    } else if (cnt == 1) {
+        // In case K is only 1, output The average of 1 number is Y instead.
+        printf("The average of 1 number is %.2f\n", sum);
+    } else {
+        printf("The average of %d numbers is %.2f\n", cnt, sum/cnt);
+    }
+}
+```
+
+
+## 1109 Group Photo (25 分)
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+int N, K, i, n, j, k, x;
+
+bool left; // 每一行定好中间的人后，后面先插入中间的人的左边还是右边。
+
+struct Person {
+    char name[10];
+    int height;
+    Person() { name[0]=' '; } // 设置前导空格。
+};
+
+Person a[10000];
+
+bool cmp(const Person& a, const Person& b) {
+    if (a.height != b.height) return a.height>b.height;
+    return strcmp(a.name, b.name)<0;
+}
+
+string s;
+
+int main() {
+    scanf("%d %d", &N, &K);
+    n = N/K;
+    /*
+    if (n&1) // 如果每行人数n是奇数，则中间的人左右两边的空位一样多，可从左边开始插入，否则，右边比左边多一个空位，先从右边开始插入。
+        left = true;
+    */
+    // 事实上，看题目给出的测试用例，总是从左边开始插入。
+    for (i=0; i<N; i++)
+        scanf("%s %d", a[i].name+1, &a[i].height); // 从前导空格后开始填充。
+    sort(a, a+N, cmp);
+    if (N%n != 0)
+        x = N%n+n;
+    else
+        x = n;
+    for (i=0; i+x<=N; ) { // 可以取等于号，因为左闭加区间长度等于右开，N也是右开。
+        // 输出一行。
+        for (k=0, j=i; j<i+x; j++, k++) {
+            if (k&1)
+                s = a[j].name + s; // a[j].name自带了前导空格。
+            else
+                s = s + a[j].name;
+        }
+        printf("%s\n", s.c_str()+1); // 记得跳过前导空格。
+        s.clear();
+        i += x;
+        x = n;
+    }
+}
+```
+
+
+## 1112 Stucked Keyboard (20 分)
+
+1. 使用getline()前记得把换行符吃掉，除非这就是我们期望的。
+2. 为什么选择找能work的键而不是找stucked的键呢？因为我们无法区分，"eee"，到底是故意重复了K次，还是e键是坏的。
+
+```cpp
+#include <iostream>
+#include <string>
+#include <unordered_set>
+using namespace std;
+
+int K;
+
+bool work[256];
+
+string s, res;
+
+unordered_set<char> stucked;
+
+int main() {
+    int i, j;
+    scanf("%d\n", &K); // 记得把换行符吃掉。
+    getline(cin, s);
+	// 先遍历一遍，找到能够work的键。
+	// 为什么选择找能work的键而不是找stucked的键呢？因为我们无法区分，"eee"，到底是故意重复了K次，还是e键是坏的。
+    for (i=0; i<s.size(); i++) {
+        for (j=i+1; j<i+K && s[j-1]==s[j]; j++)
+            ;
+        if (j != i+K) {
+            work[s[i]] = true;
+        } else {
+            i += (K-1); // 这里记得跳过"eee"，否则下一个循环看到"ee"，导致将e认为是能work的键。
+        }
+    }
+    for (i=0; i<s.size(); i++) {
+        res += s[i];
+        if (!work[s[i]]) {
+            i += (K-1);
+            if (stucked.find(s[i]) == stucked.end()) {
+                stucked.insert(s[i]);
+                printf("%c", s[i]);
+            }
+        }
+    }
+    cout << '\n' << res << '\n';
+}
+```
+
+
+## 1140 Look-and-say Sequence (20 分)
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+int N;
+
+string D, s;
+
+int main() {
+    int i, j;
+    cin >> D >> N;
+    while (--N) {
+        for (i=0; i<D.size(); i=j) {
+            for (j=i+1; j<D.size() && D[j-1]==D[j]; j++)
+                ;
+            s += D[i] + to_string(j-i); // 右开减左闭等于区间长度。
+        }
+        D = s;
+        s.clear();
+    }
+    cout << D << '\n';
+}
+```

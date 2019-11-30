@@ -1,0 +1,604 @@
+## 1031 Hello World for U (20 分)
+
+1. 公式题。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+int N, n1, n2, n3, i, k, maxK;
+
+string s, space;
+
+int main() {
+    cin >> s;
+    N = s.size();
+	// n1 = n3 = max{k | k<=n2 for all 3<=n2<=N} with n1+n2+n3-2=N，减2是横竖交点重叠了。
+    maxK = -1;
+    for (n2=3; n2<=N; n2++) {
+        k = (N+2-n2)/2;
+        if (k<=n2 && k>maxK)
+            maxK = k;
+    }
+    n1 = n3 = maxK;
+    n2 = N+2-n1-n3;
+    // printf("%d %d %d\n", n1, n3, n2);
+    for (i=0; i<n2-2; i++) {
+        space += ' ';
+    }
+    for (i=0; i<n1-1; i++) {
+        printf("%c%s%c\n", s[i], space.c_str(), s[N-1-i]);
+    }
+    printf("%c", s[i]);
+    for (i=n1; i<n1+n2-1; i++) {
+        printf("%c", s[i]);
+    }
+}
+```
+
+
+## 1032 Sharing (25 分)
+
+1. 两个链表可能有公共部分（共享的结点），如果有公共部分，找出公共部分的第一个结点。
+2. 如果有公共部分，那么两个链表中的某一个结点会指向同一个结点，即这两个结点的next值相等。
+3. 或者说，如果有公共部分，那么两个链表中的公共部分的第一个结点（及以后的结点）的地址相同。（废话，因为是同一个结点实体，地址当然相同）
+4. 这里采用的方法是将第一个链表的所有结点的地址（不是所有结点的next值）记下来，然后遍历第二个链表的所有结点的地址，若一个结点的地址在m2中出现了，即该结点就是公共部分的第一个结点。
+5. 注意，公共部分，可能从第一个链表的第一个结点就开始了，也可能从第二个链表的第一个结点就开始，不一定是从中间开始。要多思考极端情况。这就是为什么上面说要遍历所有结点的地址而不是所有结点的next值，这样链表的第一个结点就没有出现在m2中了，第二次遍历第二个链表同理。
+6. **注意捕捉题目中给的敏感信息，比如地址占5个数字，那么我们输出地址时，如果不足5位数，就要用0补齐**。
+
+```cpp
+#include <iostream>
+#include <map>
+using namespace std;
+
+// addr <-> node(key, next)，其中key不需要用到，所以只存储了next。
+map<int, int> m;
+map<int, bool> m2;
+
+int N, i, addr, next_;
+
+int head1, head2;
+
+int main() {
+    scanf("%d %d %d", &head1, &head2, &N);
+    for (i=0; i<N; i++) {
+        // 忽略字符输入。
+        scanf("%d %*c %d", &addr, &next_);
+        m[addr] = next_;
+    }
+    for (; head1!=-1; head1=m[head1]) {
+        m2[head1] = true;
+    }
+    for (; head2!=-1; head2=m[head2]) {
+        if (m2.find(head2) != m2.end()) {
+            printf("%05d\n", head2); // 注意捕捉题目中给的敏感信息，题目中提到地址是5位数字，那么输出地址时不足5位要补齐0。
+            return 0;
+        }
+    }
+    printf("-1\n");
+	/*
+    // 反转链表
+    // 虽然可以用两个哨兵结点将两个循环合并为一个循环，但没必要，这样单个循环要处理变量就多了，
+    // 而且结束条件要分别处理（如两个链表不等长），并且时间复杂度仍然是O(n)。
+    m[inf] = pair<char, int>(0, -1); // 添加一个哨兵结点。
+    for (p=head1; p!=-1; p=q) {
+        q = m[p].second;
+        // 头插法。
+        m[p].second = m[inf].second;
+        m[inf].second = p;
+    }
+    head1 = m[inf].second;
+    */
+
+}
+```
+
+
+## 1033 To Fill or Not to Fill (25 分)
+
+1. 看到输入不是有序的，那么就预感到接受输入后，要进行一下排序。
+2. 贪心算法。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <vector>
+using namespace std;
+const int inf = 99999999;
+struct station {
+    double price, dis;
+};
+bool cmp1(station a, station b) {
+    return a.dis < b.dis;
+}
+int main() {
+    double cmax, d, davg;
+    int n;
+    scanf("%lf%lf%lf%d", &cmax, &d, &davg, &n);
+    vector<station> sta(n + 1);
+    sta[n] = {0.0, d}; // 在终点加一个虚拟加油站，方便下面代码编写。
+    for(int i = 0; i < n; i++)
+        scanf("%lf%lf", &sta[i].price, &sta[i].dis);
+    sort(sta.begin(), sta.end(), cmp1);
+    double nowdis = 0.0, maxdis = 0.0, nowprice = 0.0, totalPrice = 0.0, leftdis = 0.0;
+    if(sta[0].dis != 0) {
+        printf("The maximum travel distance = 0.00");
+        return 0;
+    } else {
+        nowprice = sta[0].price; // 起点的加油站的价格。
+    }
+    while(nowdis < d) { // 只要还没到，
+        maxdis = nowdis + cmax * davg; // 假如加满油可到达的最远距离maxdis。
+		// 考察(nowdis, maxdis]内的加油站，找到一个油价比当前加油站nowprice低的加油站，或若没有的话，则找尽可能低的加油站。
+        double minPriceDis = 0, minPrice = inf;
+        int flag = 0;
+        for(int i = 1; i <= n && sta[i].dis <= maxdis; i++) {
+            if(sta[i].dis <= nowdis) continue;
+            if(sta[i].price < nowprice) {
+                totalPrice += (sta[i].dis - nowdis - leftdis) * nowprice / davg; // 在当前加油站加**恰好多**的油到这个**更便宜**的加油站。
+                leftdis = 0.0;
+                nowprice = sta[i].price;
+                nowdis = sta[i].dis; // 注意对nowdis的赋值，表示车会到下一个加油站。   
+                flag = 1; // 找到了比当前加油站价格更低的加油站。
+                break;
+            }
+            if(sta[i].price < minPrice) {
+                minPrice = sta[i].price;
+                minPriceDis = sta[i].dis;
+            }
+        }
+        if(flag == 0 && minPrice != inf) {
+			// 下一个加油站，比当前加油站贵，所以要在这个加油站加满油过去。可能在上一个加油站时也是这么做的，所以上一个加油站加满的油到这个加油站时
+			// 还有剩，肯定不是倒掉，只需在剩的基础上在这个加油站加满即可。
+            totalPrice += (nowprice * (cmax - leftdis / davg));  // 在当前加油站加恰好多的油到这个**尽可能**便宜的加油站，注意上次加油
+            leftdis = cmax * davg - (minPriceDis - nowdis); // 计算出到下一个加油站时，剩多少油。
+            nowprice = minPrice;
+            nowdis = minPriceDis; // 注意对nowdis的赋值，表示车会到下一个加油站。     
+        }
+        if(flag == 0 && minPrice == inf) {
+            nowdis += cmax * davg; // 最多开多远。
+            printf("The maximum travel distance = %.2f", nowdis);
+            return 0;
+        }
+    }
+    printf("%.2f", totalPrice);
+    return 0;
+}
+```
+
+
+## 1034 Head of a Gang (30 分)
+
+1. 根据通话记录找出帮派的头目，一条通话记录有两个人，一个通话时间，可以发现，**这就是一张图，结点是人，边是通话，边权是通话时间，由于A->B和B->A是不同的，所以这是一张有向图**。
+2. 判断帮派个数，由于帮派之间互不通话，即没有边相连，所以就是判断图中连通分量的个数，可用图的遍历判断，并在遍历过程中，记录所遍历的结点个数（帮派成员数），记录哪一个结点有入度边权+出度边权和最大，则该结点就是该帮派的头目。
+3. 这题的难点在于将实际问题进行抽象，提取本质，抽象成图的遍历，写代码其实不难。
+4. 另外如果考场没有计算器的话，想要计算26^3这样的数，那就直接写在源代码里，如`26*26*26`或python的话可以是`26**3`，让编译器在编译时计算出来。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+const int inf = 0x7fffffff;
+
+int N, K, i, w, n, nGangs, head, maxWeight, nPersons, totalWeight;
+string s1, s2;
+
+map<string, int> index_;
+map<int, string> name;
+
+// 注意N是输入的通话记录数，不是结点数。
+// 由于一个名字由3个字母表示，一个字母有A-Z共26种，故结点数最多有26^3=17576个。
+// int graph[1000][1000];
+int graph[17576][17576];
+
+// bool visited[1000];
+bool visited[17576];
+
+void dfs(int v) {
+    nPersons++;
+    visited[v] = true;
+
+    int weightOfV = 0;
+
+    // 注意这里要定义，不要误用了全局变量i。
+    for (int i=0; i<n; i++) {
+        // 注意是有向图。
+        if (graph[v][i] != 0) {
+            if (!visited[i])
+                dfs(i);
+
+            weightOfV += graph[v][i];
+            totalWeight += graph[v][i];
+        }
+        if (graph[i][v] != 0)
+            weightOfV += graph[i][v]; // 因为边不存在表示为0，所以也可以不用判断直接相加，但判断一下代码更具可读性。
+    }
+
+    if (weightOfV > maxWeight) {
+        maxWeight = weightOfV;
+        head = v;
+    }
+}
+
+// head, nPersons
+map<string, int> result;
+
+int main() {
+    scanf("%d %d", &N, &K);
+    s1.resize(4); // 多一个字节存放'\0'。
+    s2.resize(4);
+    // n表示结点数。
+    for (n=i=0; i<N; i++) {
+        scanf("%s %s %d", &s1[0], &s2[0], &w);
+        if (index_.find(s1) == index_.end()) {
+            index_[s1] = n;
+            name[n++] = s1;
+        }
+        if (index_.find(s2) == index_.end()) {
+            index_[s2] = n;
+            name[n++] = s2;
+        }
+        graph[index_[s1]][index_[s2]] = w;
+    }
+    for (i=0; i<n; i++) {
+        if (!visited[i]) {
+            maxWeight = -inf;
+            totalWeight = 0;
+            nPersons = 0;
+            dfs(i);
+            // A "Gang" is a cluster of more than 2 persons who are related to each other with total relation weight being greater than a given threshold K.
+            if (nPersons > 2 && totalWeight>K) {
+                nGangs++;
+                result[name[head]] = nPersons;
+            }
+        }
+    }
+    printf("%d\n", nGangs);
+    for (const auto &p: result)
+        printf("%s %d\n", p.first.c_str(), p.second);
+}
+```
+
+
+## 1035 Password (20 分)
+
+1. 注意不仅仅是单复数，还有is/are的区别，看题目要看仔细。
+2. 如果某个测试过不去，再多看几次题目，看仔细一点。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <string>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+const int inf = 0x7fffffff;
+
+int N, i, j, flag;
+string s1, s2;
+
+vector<pair<string, string>> result;
+
+char map[256];
+
+int main() {
+    map['1'] = '@';
+    map['0'] = '%';
+    map['l'] = 'L';
+    map['O'] = 'o';
+    scanf("%d", &N);
+    s1.resize(10);
+    s2.resize(10);
+    for (i=0; i<N; i++) {
+        scanf("%s %s", &s1[0], &s2[0]);
+        flag = false;
+        for (j=0; j<s2.size(); j++) {
+            if (s2[j]=='1' || s2[j]=='0' || s2[j]=='l'|| s2[j]=='O') {
+                s2[j] = map[s2[j]];
+                flag = true;
+            }
+        }
+        if (flag)
+            result.push_back(pair<string, string>(s1, s2));
+    }
+    if (result.size() == 0) {
+        if (N == 1)
+            printf("There is %d account and no account is modified\n", N); // 注意不仅仅是单复数，还有is/are的区别。
+        else
+            printf("There are %d accounts and no account is modified\n", N);
+        return 0;
+    }
+    printf("%d\n", result.size());
+    for (const auto &p: result)
+        printf("%s %s\n", p.first.c_str(), p.second.c_str());
+}
+```
+
+
+## 1036 Boys vs Girls (25 分)
+
+1. name和id不超过10个字符，所以如果使用char数组接受输入的话，一定记得分配**至少11字节**，这样才有空间存储'\0'。
+2. 如果数组长度为10字节，那么是过不了测试的，一直在看程序逻辑，却忽略了这个地方。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+int N, i, j, grade, lowest=101, highest=-1;
+
+char gender;
+
+char name[11], id[11]; // 11字节，要保存'\0'。
+
+pair<string, string> result[2];
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%s %c %s %d", name, &gender, id, &grade);
+        if (gender=='M' && grade<lowest) {
+            result[1].first = string(name);
+            result[1].second = string(id);
+            lowest = grade;
+        } else if (gender=='F' && grade>highest) {
+            result[0].first = string(name);
+            result[0].second = string(id);
+            highest = grade;
+        }
+    }
+    // if (result[0].first.empty())
+    if (highest == -1) printf("Absent\n");
+    else printf("%s %s\n", result[0].first.c_str(), result[0].second.c_str());
+    // if (result[1].first.empty())
+    if (lowest == 101) printf("Absent\n");
+    else printf("%s %s\n", result[1].first.c_str(), result[1].second.c_str());
+    // if (!result[0].first.empty() && !result[1].first.empty())
+    if (highest!=-1 && lowest!=101) printf("%d\n", highest-lowest);
+    else printf("NA\n");
+    return 0;
+}
+```
+
+
+## 1037 Magic Coupon (25 分)
+
+1. Each coupon and each product may be selected at most once. 最多一次，也就是可以不使用，结合测试用例，确实如此。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int Nc, Np, i, j, maxBack;
+
+int c[100001], p[100001];
+
+auto cmp = [](const int a, const int b){ return a>b; };
+
+int main() {
+    scanf("%d", &Nc);
+    for (i=1; i<=Nc; i++)
+        scanf("%d", &c[i]);
+    scanf("%d", &Np);
+    for (i=1; i<=Np; i++)
+        scanf("%d", &p[i]);
+    sort(c+1, c+1+Nc, cmp);
+    sort(p+1, p+1+Np, cmp);
+    for (i=1; i<=Nc && i<=Np; i++) {
+        if (c[i]<0 || p[i]<0)
+            break;
+        maxBack += c[i]*p[i];
+    }
+    for (i=Nc, j=Np; i>=0; i--, j--) {
+        if (c[i]>0 || p[j]>0)
+            break;
+        maxBack += c[i]*p[j];
+    }
+    printf("%d\n", maxBack);
+}
+```
+
+
+## 1038 Recover the Smallest Number (30 分)
+
+1. 由于输入的数字有前导的零，为了接受这个零，需要用字符串存储，而不是整型。
+2. 贪心问题，给出一组数，要求这组数的排列组合中最小的哪个数，也就是从最高位起，每一位尽量找最小的数。
+3. 上面的求解思路其实不是很好，因为输入的数据不是一位一位，而是一个整数一个整数。
+4. 柳诺大佬的求解：https://www.liuchuo.net/archives/2303
+5. std::sort，技巧在于cmp函数的选择。
+6. 使用`s.erase(s.begin())`擦除字符串前导的0，注意**可能不仅一个零，所以要用循环**。
+
+```cpp
+#include <iostream>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+int N, i;
+
+string s[10001], result;
+
+// 不是按照字典序排列就可以的，必须保证两个字符串构成的数字是最小的才行，
+// 所以cmp函数写成return a + b < b + a;的形式，保证它排列按照能够组成的最小数字的形式排列。
+auto cmp = [](const string& a, const string& b){ return a+b<b+a; };
+
+int main() {
+    cin >> N;
+    for (i=0; i<N; i++)
+        cin >> s[i];
+    sort(s, s+N, cmp);
+    for (i=0; i<N; i++)
+        result += s[i];
+    while (result.size()!=0 && result[0]=='0')
+        result.erase(result.begin());
+    if (result.size() == 0) cout << 0 << endl;
+    else cout << result << endl;
+}
+```
+
+
+## 1039 Course List for Student (25 分)
+
+1. 数据整理查询题，问题在于，使用cin, cout, map, set, string可能会动态分配内存比较频繁。事实上，最后一个测试用例有时会超时。
+2. 这时一个思路就是空间换时间了。
+3. 大佬的思路：https://www.liuchuo.net/archives/2145
+4. 可以**手动使用hash(26*26*26*10+10)将学生姓名变为int型**。
+5. 相较于第一个版本，第二个版本快很多。
+
+```cpp
+#include <iostream>
+#include <map>
+#include <string>
+#include <set>
+#include <algorithm>
+using namespace std;
+
+int N, K, i, j, n, course;
+
+// 由于要求有序，所以用了set。
+map<string, set<int>> m;
+
+string name;
+
+int main() {
+    cin >> N >> K;
+    for (i=0; i<K; i++) {
+        cin >> course >> n;
+        for (j=0; j<n; j++) {
+            cin >> name;
+            if (m.find(name) == m.end())
+                m[name] = set<int>{course};
+            else
+                m[name].insert(course);
+        }
+    }
+    for (i=0; i<N; i++) {
+        cin >> name;
+        cout << name << ' ' << m[name].size();
+        for (const auto& x: m[name])
+            cout << ' ' << x;
+        cout << endl;
+    }
+}
+```
+
+```cpp
+#include <iostream>
+#include <map>
+#include <string>
+#include <set>
+#include <algorithm>
+using namespace std;
+
+int getid(char *name) {
+    int hash = 0;
+    for (int i=0; i<3; i++)
+        hash = hash*26+(name[i]-'A');
+    hash = hash*10+(name[3]-'0');
+    return hash;
+}
+
+const int inf = 0x7fffffff;
+
+int N, K, i, j, n, course;
+
+// 由于要求有序，所以用了set。
+// map<string, set<int>> m;
+set<int> m[26*26*26*10+10]; // XXX 手动做hash。
+
+// string name;
+char name[5]; // 注意，题目给出名字长度为4，则至少需要5个字节，一个字节保存'\0'。
+
+int main() {
+    // cin >> N >> K;
+    scanf("%d %d", &N, &K);
+    for (i=0; i<K; i++) {
+        // cin >> course >> n;
+        scanf("%d %d", &course, &n);
+        for (j=0; j<n; j++) {
+            // cin >> name;    
+            scanf("%s", name);
+            /*
+            if (m.find(name) == m.end())
+                m[name] = set<int>{course};
+            else
+                m[name].insert(course);
+            */
+            m[getid(name)].insert(course);
+        }
+    }
+    /*
+    for (i=0; i<N; i++) {
+        cin >> name;
+        cout << name << ' ' << m[name].size();
+        for (const auto& x: m[name])
+            cout << ' ' << x;
+        cout << endl;
+    }
+    */
+    for (i=0; i<N; i++) {
+        scanf("%s", name);
+        printf("%s %ld", name, m[getid(name)].size());
+        for (int x: m[getid(name)])
+            printf(" %d", x);
+        printf("\n");
+    }
+}
+```
+
+
+## 1040 Longest Symmetric String (25 分)
+
+1. 动态规划，Given a string, you are supposed to output the length of the longest symmetric sub-string. For example, given Is PAT&TAP symmetric?, the longest symmetric sub-string is s PAT&TAP s, hence you must output 11.
+2. https://www.liuchuo.net/archives/2104
+3. 输入可能包含空格，因为要接受整一行，所以只能用getline(cin, s)，而不能用循环+cin。
+
+```cpp
+#include <iostream>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+string s;
+
+int i, j, n, l, ans=1; // ans初始值为1而不是0，因为单个字符就是对称/回文的。
+
+bool dp[1000][1000]; // dp[i][j]表示s[i]到s[j]所表示的字串是否是回文字串。
+
+int main() {
+    getline(cin, s);
+    n = s.size();
+	// 先求出长度1和长度2的子串的dp值，供后面的循环使用。
+    for (i=0; i<n-1; i++) {
+        dp[i][i] = true;
+        if (s[i] == s[i+1]) {
+            dp[i][i+1] = true;
+            ans = 2;
+        }
+        // else dp[i][i+1] = false;
+    }
+    dp[i][i] = true;
+    for (l=3; l<=n; l++) { // l表示对称/回文字串长度，所以它最大可以是n。
+        for (i=0; i+l-1<n; i++) {
+            j = i+l-1; // j指向对称的那一段，下标i加上长度l，会得到指向i指向的元素在内的l各元素后的元素，所以要减1。
+            if (s[i]==s[j] && dp[i+1][j-1]==true) { // 并且[i, j]的字串[i+1, j-1]也是回文的的话。
+                dp[i][j] = true;
+                ans = l;
+            }
+            // else dp[i][j] = false;
+        }
+    }
+    printf("%d\n", ans);
+}
+```
+

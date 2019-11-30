@@ -1,0 +1,613 @@
+## 1091 Acute Stroke (30 分)
+
+1. 三维bfs。
+
+```cpp
+#include <iostream>
+#include <queue>
+using namespace std;
+
+struct Point {
+    int x, y, z;
+    Point(int a, int b, int c): x(a), y(b), z(c) {}
+    Point() = default;
+};
+
+// 6个方向。
+int X[6] = {1, 0, 0, -1, 0, 0};
+int Y[6] = {0, 1, 0, 0, -1, 0};
+int Z[6] = {0, 0, 1, 0, 0, -1};
+
+int a[60][1286][128];
+
+bool visited[60][1286][128];
+
+int M, N, L, T, i, j, k, ans;
+
+int bfs(int x, int y, int z) {
+    int xx, yy, zz, count=0; // 局部变量记得初始化。
+    Point point;
+    queue<Point> q;
+    q.push(Point(x, y, z));
+    visited[x][y][z] = true; // bfs时，在结点入队时更新相关数据，和在结点出队时才更新相关数据的区别
+    // 在这里，如果是后者，那么就可能重复推入同一个点。
+    while (!q.empty()) {
+        point = q.front();
+        q.pop();
+        count++;
+        // 遍历6个方向。
+        for (int i=0; i<6; i++) { // 这里i要用局部变量，避免污染全局的i。
+            xx = point.x + X[i];
+            yy = point.y + Y[i];
+            zz = point.z + Z[i];
+            if (xx<0 || xx>=L || yy<0 || yy>=M || zz<0 || zz>=N)
+                continue;
+            if (visited[xx][yy][zz] || a[xx][yy][zz]==0)
+                continue;
+            q.push(Point(xx, yy, zz));
+            visited[xx][yy][zz] = true;
+        }
+    }
+    if (count >= T)
+        return count;
+    return 0;
+}
+
+int main() {
+    scanf("%d %d %d %d", &M, &N, &L, &T);
+    for (i=0; i<L; i++)
+        for (j=0; j<M; j++)
+            for (k=0; k<N; k++)
+                scanf("%d", &a[i][j][k]);
+    for (i=0; i<L; i++) {
+        for (j=0; j<M; j++) {
+            for (k=0; k<N; k++) {
+                if (a[i][j][k]==1 && !visited[i][j][k]) {
+                    ans += bfs(i, j, k);
+                }
+            }
+        }
+    }
+    printf("%d\n", ans);
+}
+```
+
+
+## 1092 To Buy or Not to Buy (20 分)
+
+1. 如果只需要哈希，不需要有序，可用unordered_map/unordered_set，而不用map/set。
+2. 注意正确选择遍历的对象。
+
+```cpp
+#include <iostream>
+#include <unordered_map>
+using namespace std;
+
+unordered_map<char, int> count1, count2;
+
+string s1, s2;
+
+int i, nMiss;
+
+int main() {
+    cin >> s1 >> s2;
+    for (char c: s1)
+        count1[c]++; // 由于没有会创建pair，并值初始化，int会初始化为0，所以可以直接这么写。
+    for (char c: s2)
+        count2[c]++;
+    /*
+     * 这个遍历是不对的，遍历的对象不对，应该遍历count2，因为count2帮我们去重了。
+    for (char c: s2) {
+        if (count1[c] < count2[c])
+            nMiss += count2[c]-count1[c];
+    }
+    */
+    for (const auto& p: count2) {
+        if (count1[p.first] < p.second)
+            nMiss += p.second-count1[p.first];
+    }
+    if (nMiss)
+        printf("No %d\n", nMiss);
+    else
+        printf("Yes %d\n", s1.size()-s2.size());
+}
+```
+
+
+## 1093 Count PAT's (25 分)
+
+1. PAT的数量可以巧妙地认为是每个A的左边的P的数量乘以右边T的数量。 
+2. 用两个数组来记录每个位置左边P的数量和右边T的数量，在记录时，遍历到的位置为P或者T，其下一个位置的数量就为前一个的数量+1，否则和前一个位置的数量相同。 
+3. 注意题目中，output the result moded by 1000000007因为测试样例结果过大，需要将结果取模，但是如果是在最后取模，因为在中间过程已经越界，结果还是不对的，导致最后两个测试点过不去。**正确的做法应该是在遍历每个A的时候就取模，有效防止越界**。**每次都取模，防止溢出，而不是最后才取模，可能中间就溢出了**。
+4. 注意`ans += (p[i]*t[i])%1000000007;`和`ans = (ans+p[i]*t[i])%1000000007;`的区别。
+
+```
+#include <iostream>
+#include <string>
+using namespace std;
+
+long p[100000], t[100000];
+
+string s;
+
+int i;
+
+long ans;
+
+int main() {
+    cin >> s;
+    for (i=0; i<s.size()-1; i++) {
+        if (s[i] == 'P')
+            p[i+1] = p[i]+1;
+        else
+            p[i+1] = p[i];
+    }
+    for (i=s.size()-1; i>0; i--) {
+        if (s[i] == 'T')
+            t[i-1] = t[i]+1;
+        else
+            t[i-1] = t[i];
+    }
+    for (i=1; i<s.size()-1; i++) {
+        if (s[i] == 'A')
+            // ans += (p[i]*t[i])%1000000007;
+            ans = (ans+p[i]*t[i])%1000000007;
+    }
+    cout << ans << endl;
+}
+```
+
+
+## 1094 The Largest Generation (25 分)
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <queue>
+using namespace std;
+
+vector<int> node[101]; // 从1开始编号。
+
+int i, N, M, id, nChilds, x, largestPopulation=1, theLevel=1;
+
+void bfs() {
+    int level = 1;
+    queue<int> q;
+    q.push(1);
+    q.push(-1); // 马上推入结束标志。
+    while(!q.empty()) {
+        x = q.front();
+        q.pop();
+        if (x == -1) {
+            if (q.empty()) // 避免死循环。
+                break;
+            level++; // 下一层的层次。
+            if (q.size() > largestPopulation) {
+                largestPopulation = q.size();
+                theLevel = level;
+            }
+            q.push(-1); // 下一层的结束标志。
+            continue;
+        }
+        for (int child: node[x])
+            q.push(child);
+    }
+}
+
+/*
+int book[100];
+void dfs(int index, int level) {
+    book[level]++;
+    for(int i = 0; i < v[index].size(); i++)
+        dfs(v[index][i], level+1);
+}
+*/
+
+int main() {
+    scanf("%d %d", &N, &M);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &id, &nChilds);
+        while (nChilds--) {
+            scanf("%d", &x);
+            node[id].push_back(x);
+        }
+    }
+    bfs();
+    printf("%d %d\n", largestPopulation, theLevel);
+}
+```
+
+
+## 1095 Cars on Campus (30 分)
+
+1. 接受输入，第一次先按对分类并按时间排序，挑出有效的记录，然后不按对分类了，直接按时间排序。然后遍历处理查询。注意到，由于查询的时间是升序的，所以可以在上一次查询的结果上继续计算。
+2. 注意输出格式，小时、分钟、秒不足两位，补零。
+
+```cpp
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <map>
+using namespace std;
+
+struct Record {
+    string plateNO;
+    int time;
+    bool in;
+    Record() { plateNO.resize(8); }
+};
+
+map<string, int> howLong; // 某辆车的停车时间，XXX 注意某辆车可能多次进出，要累加起来。
+
+int N, K, i, hh, mm, ss, nValid, time_, j, cnt, maxTime;
+
+char status[4]; // 多一个字节存储'\0'。
+char plateNO[8];
+
+Record input[10000], valid[10000];
+
+bool cmp1(const Record& a, const Record& b) {
+    // XXX 先分类。
+    if (a.plateNO != b.plateNO) return a.plateNO<b.plateNO; // 对id进行分类，使得相同id的记录排在一起。
+    // 相同id的记录再按照时间升序排序。
+    return a.time < b.time;
+}
+
+bool cmp2(const Record& a, const Record& b) {
+    return a.time < b.time;
+}
+
+int main() {
+    scanf("%d %d", &N, &K);
+    for (i=0; i<N; i++) {
+        scanf("%s %d:%d:%d %s", plateNO, &hh, &mm, &ss, status);
+        input[i].plateNO = plateNO;
+        input[i].time = hh*3600+mm*60+ss;
+        input[i].in = status[0]=='i'? true: false;
+    }
+    sort(input, input+N, cmp1);
+    // 挑选出有效的记录，即配对的记录，若有四条记录i1, i2, o1, o2，则选择i2, o1为有效记录，它们相邻。
+    for (i=1; i<N; i++) {
+        if (input[i].plateNO==input[i-1].plateNO && input[i-1].in==true && input[i].in==false) { // 一进一出。
+            valid[nValid++] = input[i-1];
+            valid[nValid++] = input[i];
+            howLong[input[i].plateNO] += input[i].time-input[i-1].time;
+            maxTime = max(maxTime, howLong[input[i].plateNO]);
+        }
+    }
+    sort(valid, valid+nValid, cmp2);
+    j = cnt = 0;
+    for (i=0; i<K; i++) {
+        scanf("%d:%d:%d", &hh, &mm, &ss);
+        time_ = hh*3600+mm*60+ss;
+        for (; j<nValid && valid[j].time<=time_; j++) { // XXX 从上一次搜索停下来的地方继续搜索。
+            if (valid[j].in) cnt++; // 进入停车。
+            else cnt--; // 离开。
+        }
+        printf("%d\n", cnt);
+        // cnt不置零。
+    }
+    for (const auto& p: howLong) { // std::map默认按字典序升序维护pair。
+        if (p.second == maxTime)
+            printf("%s ", p.first.c_str());
+    }
+    // 一小时有3600秒，除以3600，获得小时数；一分钟有60秒，除以60，得到分钟数，模60，得到去掉小时数剩下的分钟数。
+    printf("%02d:%02d:%02d\n", maxTime/3600, maxTime/60%60, maxTime%60);
+}
+```
+
+
+## 1096 Consecutive Factors (20 分)
+
+1. 质数是特殊的输入，它的因子只有1和它本身，要确保算法对质数能正常工作。
+2. 1是特殊的因子，对于一个数的不同因子序列，都可以插入一个1。如果我们从1开始遍历，那么就会使得第一个“从1开始的”因子序列比其它“不从1开始的”因子序列长。所以应该排除它。
+3. 一串连续的数字只需要存储起点和长度即可，不需要用容器存储每一个数。
+4. 一个数的因子只可能在[2, sqrt(x)]范围内，还有特殊的1（最小因子）和它本身（最大因子），次大因子最大只可能是sqrt(x)。
+
+```cpp
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+// 1是特殊的因子，对于一个数的不同因子序列，都可以插入一个1。如果我们从1开始遍历，那么就会使得第一个“从1开始的”因子序列比其它“不从1开始的”因子序列长。所以应该排除它。
+// 质数是特殊的输入，它的因子只有1和它本身，要确保算法对质数能正常工作。
+
+int main() {
+    int N, n, i, j, cnt, max_=-1, start;
+    scanf("%d", &N);
+    int s = sqrt(N);
+	// 只需枚举左端点即可，每个因子使用一次，如果不连续了，枚举下一个左端点。
+    for (i=2; i<=s; i++) {
+        n = N;
+        cnt = 0;
+        for (j=i; n!=1; j++) {
+            if (n%j == 0) {
+                cnt++;
+                n /= j;
+            } else { // 因子不连续，break。
+                break;
+            }
+        }
+        if (cnt > max_) {
+            max_ = cnt;
+            start = j-max_; // 右开减区间长度等于左闭。
+        }
+    }
+    if (max_ <= 0) { // 这里是<=，当上面没有进入循环时，如输入是3，此时max_为-1。
+        printf("1\n%d\n", N);
+        return 0;
+    }
+    printf("%d\n%d", max_, start);
+    for (i=start+1; i<start+max_; i++)
+        printf("*%d", i);
+}
+```
+
+
+## 1097 Deduplication on a Linked List (25 分)
+
+1. next指针的值就是下一个结点的地址。要输出next指针的值，可以直接输出当前结点中next指针的值，也可以找到当前结点的下一个结点，输出该结点的地址。
+
+```cpp
+#include <iostream>
+#include <cmath>
+#include <unordered_map>
+using namespace std;
+
+struct Node {
+    int addr, key, next;
+};
+
+Node a[100000], list[100000], removedList[100000];
+
+unordered_map<int, bool> book;
+
+int head, N, i, addr, key, next_, cnt1, cnt2;
+
+int main() {
+    scanf("%d %d", &head, &N);
+    for (i=0; i<N; i++) {
+        scanf("%d %d %d", &addr, &key, &next_);
+        a[addr].addr = addr; // 以地址作为下标，获得O(1)存取效率。
+        a[addr].key = key;
+        a[addr].next = next_;
+    }
+    // 下面的算法在N==1时会打印多余的语句，所以要在这里处理一下边界情况。
+    if (N == 1) {
+        printf("%05d %d -1\n", addr, key);
+        return 0;
+    }
+    while (head != -1) {
+        // 分类。
+        if (!book[abs(a[head].key)]) { // 绝对值，value默认/值初始化为false。
+            list[cnt1++] = a[head];
+            book[abs(a[head].key)] = true;
+        } else {
+            removedList[cnt2++] = a[head];
+        }
+        head = a[head].next;
+    }
+    for (i=0; i<cnt1-1; i++)
+        printf("%05d %d %05d\n", list[i].addr, list[i].key, list[i+1].addr);
+    printf("%05d %d -1\n", list[i].addr, list[i].key);
+    for (i=0; i<cnt2-1; i++)
+        printf("%05d %d %05d\n", removedList[i].addr, removedList[i].key, removedList[i+1].addr);
+    printf("%05d %d -1\n", removedList[i].addr, removedList[i].key);
+}
+```
+
+
+## 1098 Insertion or Heap Sort (25 分)
+
+According to Wikipedia:
+
+Insertion sort iterates, consuming one input element each repetition, and growing a sorted output list. Each iteration, insertion sort removes one element from the input data, finds the location it belongs within the sorted list, and inserts it there. It repeats until no input elements remain.
+
+Heap sort divides its input into a sorted and an unsorted region, and it iteratively shrinks the unsorted region by extracting the largest element and moving that to the sorted region. it involves the use of a heap data structure rather than a linear-time search to find the maximum.
+
+1. 不是插入排序就是堆排序，故挑一种容易判断的进行判断。
+2. 由于涉及到堆，而堆是完全二叉树，用数组存储，所以下标从1开始。
+3. 将新的根下滤到合适的位置i。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int initial[100], partially[100];
+
+// 不是插入排序就是堆排序，故挑一种容易判断的进行判断。
+//
+// 由于涉及到堆，而堆是完全二叉树，用数组存储，所以下标从1开始。
+
+int main() {
+    int N, i, j, x;
+    scanf("%d", &N);
+    for (i=1; i<=N; i++)
+        scanf("%d", initial+i);
+    for (i=1; i<=N; i++)
+        scanf("%d", partially+i);
+    for (i=2; i<=N && partially[i]>=partially[i-1]; i++)
+        ;
+    j = i;
+    for (; i<=N && partially[i]==initial[i]; i++)
+        ;
+    if (i == N+1) {
+        printf("Insertion Sort\n");
+        // j指向未排序序列中的第一个元素，现要将其插入已排序序列中合适的位置。
+        for (x=partially[j]; j>1 && x<partially[j-1]; j--)
+            partially[j] = partially[j-1];
+        partially[j] = x; // 插入。
+        printf("%d", partially[1]);
+        for (i=2; i<=N; i++)
+            printf(" %d", partially[i]);
+        return 0;
+    }
+    // 不是插入排序就是堆排序。
+    printf("Heap Sort\n");
+    int root = partially[1];
+    // 找到堆中的最底下的最后一个元素，
+    for (i=N; i>=1 && partially[i]>root; i--)
+        ;
+    int heapSize = i-1;
+    // 将其与堆中最大的根互换。
+    partially[1] = partially[i];
+    partially[i] = root;
+    root = partially[1];
+    // 将新的根下滤到合适的位置i。
+    int child;
+    for (i=1; 2*i<=heapSize; ) { // 如果没有左孩子，那么肯定没有右孩子。
+        child = 2*i;
+        // 选择孩子中最大的那个。
+        if (child+1<=heapSize && partially[child+1]>partially[child])
+            child++;
+        if (root < partially[child])
+            partially[i] = partially[child];
+        else
+            break;
+        i = child; // 往下走。
+    }
+    partially[i] = root;
+    printf("%d", partially[1]);
+    for (i=2; i<=N; i++)
+        printf(" %d", partially[i]);
+}
+```
+
+
+## 1099 Build A Binary Search Tree (30 分)
+
+1. 利用BST的一个性质，对BST进行中序遍历，可以得到一个升序有序序列。我先对输入的权重序列升序排序，然后中序遍历已建立的BST，依次填入相关的权重，最后层序遍历已填好权重的BST。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <queue>
+using namespace std;
+
+struct Node {
+    int key, left, right;
+    Node(): left(-1), right(-1) {}
+};
+
+// 根所处的位置是0。
+Node bst[100];
+
+int keys[100];
+
+// 利用BST的一个性质，对BST进行中序遍历，可以得到一个升序有序序列。
+
+int N, i, lchild, rchild, x;
+
+void inorderTraversal(int root) {
+    if (root == -1)
+        return;
+    inorderTraversal(bst[root].left);
+    bst[root].key = keys[i++]; // 访问/填充。
+    inorderTraversal(bst[root].right);
+}
+
+void bfs(int root) {
+    queue<int> q;
+    q.push(root);
+    printf("%d", bst[root].key); // 在推入的时候更新相关数据，这里是为了控制输出格式。
+    while (!q.empty()) {
+        x = q.front();
+        q.pop();
+        if (bst[x].left != -1) {
+            q.push(bst[x].left);
+            printf(" %d", bst[bst[x].left].key);
+        }
+        if (bst[x].right != -1) {
+            q.push(bst[x].right);
+            printf(" %d", bst[bst[x].right].key);
+        }
+    }
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d %d", &lchild, &rchild);
+        bst[i].left = lchild;
+        bst[i].right = rchild;
+    }
+    for (i=0; i<N; i++)
+        scanf("%d", keys+i);
+    sort(keys, keys+N); // 权按升序排序。
+    i = 0;
+    inorderTraversal(0);
+    bfs(0);
+}
+```
+
+
+## 1100 Mars Numbers (20 分)
+
+1. 模得到低位，除法得到高位。
+
+```cpp
+#include <iostream>
+#include <string>
+#include <cctype>
+#include <unordered_map>
+using namespace std;
+
+// 13进制的第0位。
+string zero[13] = {"tret", "jan", "feb", "mar", "apr", "may", "jun", "jly", "aug", "sep", "oct", "nov", "dec"};
+// 13进制的第1位。
+string one[13] = {"", "tam", "hel", "maa", "huh", "tou", "kes", "hei", "elo", "syy", "lok", "mer", "jou"};
+
+int N, x, i;
+
+string line;
+
+unordered_map<string, int> m;
+
+void init() {
+    for (int i=0; i<13; i++) {
+        m[zero[i]] = i;
+        m[one[i]] = i*13; // 1*13, 2*13, ..., 12*13。
+    }
+    // 排列组合，先把表做好，后面可以直接查表。
+    for (int i=0; i<13; i++) {
+        for (int j=0; j<13; j++)
+            m[one[i] + " " + zero[j]] = i*13+j;
+    }
+}
+
+int main() {
+    init();
+    scanf("%d\n", &N); // 最好把\n吃掉。
+    while (N--) { // 因为后面不需要用到N了，所以可以在这里把N“消耗掉”。
+        getline(cin, line);
+        if (isdigit(line[0])) {
+            x = stoi(line);
+            /*
+            if (x < 13) {
+                printf("%s\n", zero[x].c_str());
+            } else {
+                printf("%s %s\n", one[x/13%13].c_str(), zero[x%13].c_str()); // 注意先输出高位，再输出低位。
+            }
+            */
+            if (x < 13) {
+                printf("%s\n", zero[x].c_str());
+            } else if (x%13 == 0) { // XXX 如果是13的整数倍，只需要输出一个词即可。
+                // printf("%s\n", one[x%13].c_str()); // 取低位，错。
+                printf("%s\n", one[x/13].c_str()); // 取高位。
+            } else {
+                printf("%s %s\n", one[x/13].c_str(), zero[x%13].c_str()); // 注意先输出高位，再输出低位。
+            }
+        } else {
+            printf("%d\n", m[line]);
+            /*
+            if ((i=line.find(' ')) == string::npos) {
+                printf("%d\n", m[line]);
+            } else {
+                printf("%d\n", m[line.substr(0, i)]+m[line.substr(i+1)]);
+            }
+            */
+        }
+    }
+}
+```

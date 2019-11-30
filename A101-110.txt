@@ -1,0 +1,722 @@
+## 1101 Quick Sort (25 分)
+
+1. 一个关键的点是，大于其左边所有的元素==大于其左边最大的元素，小于其右边所有的元素==小于其右边最小的元素。
+2. 如果要输出的元素为0，打印一个空行。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <climits>
+using namespace std;
+
+int N, i, j, leftMax=INT_MIN, rightMin=INT_MAX; // 一定义马上初始化。
+
+bool flag;
+
+int a[100000], maxa[100000], mina[100000]; // maxa[i]存储元素a[i]左边最大的元素，mina[i]同理。
+
+vector<int> v;
+
+// 题目保证输入序列的元素两两不相等。
+// 一个元素要能作为主元，它必须大于其左边所有的元素，小于其右边所有的元素。
+// 而一个关键的点是，大于其左边所有的元素==大于其左边最大的元素，小于其右边所有的元素==小于其右边最小的元素。
+// 一个元素要能作为主元，它必须大于其左边最大的元素，小于其右边最小的元素。
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%d", a+i);
+    for (i=0; i<N; i++) {
+        maxa[i] = leftMax;
+        leftMax = max(leftMax, a[i]);
+    }
+    for (i=N-1; i>=0; i--) {
+        mina[i] = rightMin;
+        rightMin = min(rightMin, a[i]);
+    }
+    for (i=0; i<N; i++) {
+        if (a[i]>maxa[i] && a[i]<mina[i])
+            v.push_back(a[i]);
+    }
+    printf("%d\n", v.size());
+    if (!v.empty()) {
+        printf("%d", v[0]);
+        for (i=1; i<v.size(); i++)
+            printf(" %d", v[i]);
+    }
+    printf("\n"); // 如果要输出的元素为0，打印一个空行。
+}
+```
+
+
+## 1102 Invert a Binary Tree (25 分)
+
+1. 这里并不需要真的去反转二叉树，只需要在遍历输出的时候，把遍历的方向调换一下即可。
+2. 按字符输入，记得吃掉空格和\n等不相干的字符。
+3. 如果要反转的话，用先序遍历函数，函数要返回当前结点的指针，以便更新父结点的左右孩子指针。
+4. 由于递归分支不是同时展开的，所以需要先保存被覆盖的变量。
+
+```cpp
+#include <iostream>
+#include <queue>
+using namespace std;
+
+struct Node {
+    int left, right;
+    Node(): left(-1), right(-1) {}
+};
+
+// 从0开始编号，注意根的编号不是0，要我们自己找。
+Node tree[10];
+
+bool pointed[10];
+
+int N, i, x, root;
+
+char lchild, rchild;
+
+/*
+int reverse(int root) {
+    if (root != -1) {
+        int oldLeft = tree[root].left;
+        tree[root].left = reverse(tree[root].right);
+        // tree[root].right = reverse(tree[root].left); // 由于递归分支不是同时展开的，所以需要先保存被覆盖的变量。
+        tree[root].right = reverse(oldLeft);
+    }
+    return root;
+}
+*/
+
+void bfs() {
+    queue<int> q;
+    q.push(root);
+    printf("%d", root); // 在push()时打印，而不是在pop()时打印，这里是为了控制输出格式。
+    while (!q.empty()) {
+        x = q.front();
+        q.pop();
+        // 从右到左推入。
+        if (tree[x].right != -1) {
+            q.push(tree[x].right);
+            printf(" %d", tree[x].right);
+        }
+        if (tree[x].left != -1) {
+            q.push(tree[x].left);
+            printf(" %d", tree[x].left);
+        }
+    }
+    printf("\n");
+}
+
+void inorderTraversal(int root) {
+    if (root != -1) {
+        // 右中左。
+        inorderTraversal(tree[root].right);
+        if (i == 1) {
+            printf("%d", root);
+            i++;
+        } else {
+            printf(" %d", root);
+        }
+        inorderTraversal(tree[root].left);
+    }
+}
+
+int main() {
+    scanf("%d\n", &N); // 因为后面按字符接受输入，所以这里要把\n吃掉。
+    for (i=0; i<N; i++) {
+        scanf("%c %c\n", &lchild, &rchild); // 记得吃掉空格和\n。
+        if (lchild != '-') {
+            tree[i].left = lchild-'0';
+            pointed[tree[i].left] = true;
+        }
+        if (rchild != '-') {
+            tree[i].right = rchild-'0';
+            pointed[tree[i].right] = true;
+        }
+    }
+    for (i=0; i<N && pointed[i]; i++)
+        ;
+    root = i; // 没有边指向结点i，所以它是根。
+    bfs();
+    i = 1;
+    inorderTraversal(root);
+}
+```
+
+
+## 1103 Integer Factorization (30 分)
+
+1. 先做一个表，防止重复计算。
+2. 树形递归（有多个根的多个树形递归，森林递归？），枚举所有可能的组合。
+3. 递归中逐步构造序列时，可以用“在相同位置覆盖”代替“插入后删除/恢复”。
+4. 多读题，仔细读，理解题意，跟着题目的思路来，不要主观臆测和武断。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <climits>
+#include <cmath>
+using namespace std;
+
+vector<int> powerP;
+vector<int> temp;
+vector<int> ans;
+
+// 注意从测试用例和题目给出的描述（12不是169的除法因子）可以看出，题目所说的因子不是除法意义上的因子。
+
+int N, K, P, maxFactorsSum=INT_MIN;
+
+// 先做一个表，防止重复计算。
+// powerP[i]==i^P，XXX i是连续的。
+void init() {
+    powerP.push_back(0); // 不使用下标0，0的次幂没有意义。
+    int x=1;
+    for (int i=2; x<=N; i++) { // 注意这里，==N是可以的，`N = i^P`这样的结果也是可接受的。
+        powerP.push_back(x);
+        x = pow(i, P);
+    }
+}
+
+
+// 枚举所有组合，对于一个“因子”，可选，可不选。
+void dfs(int i, int k, int sum_, int factorsSum) {
+    // if (k==K && sum_==N) { // 这个条件设置的不好，这样即使k==K了，如果sum_!=N，也不会终止递归。特别的，没有搞清楚其实`k==K`才是真正的递归终点。
+    if (k == K) {
+        if (sum_ != N)
+            return;
+        // You must output the one with the maximum sum of the factors. If there is a tie, the largest factor sequence must be chosen.
+        if (factorsSum > maxFactorsSum) {
+            maxFactorsSum = factorsSum;
+            ans = temp;
+        /*
+        } else if (factorsSum == maxFactorsSum) {
+            for (i=0; i<temp.size() && i<ans.size(); i++) {
+                if (ans[i] > temp[i])
+                    break;
+                if (temp[i] > ans[i]) {
+                    ans = temp;
+                    break;
+                }
+                // temp[i]==ans[i]，继续比较。
+            }
+            if ((i==temp.size() || i==ans.size()) && temp.size()>ans.size())
+                ans = temp;
+        */
+        }
+        return;
+    }
+
+    for (; i>=1; i--) {
+        if (sum_+powerP[i] <= N) {
+            temp[k] = i; // XXX 可以用“在相同位置覆盖”代替“插入后删除”。
+            // temp.push_back(i);
+            dfs(i, k+1, sum_+powerP[i], factorsSum+i); // 这里传入的i不需要更新，因为下一个递归也可以选或不选“因子”powerP[i]。同一个powerP[i]可以被选用多次。
+            // temp.pop_back();
+        }
+    }
+}
+
+int main() {
+    scanf("%d %d %d", &N, &K, &P);
+    init();
+    temp.resize(K);
+    dfs(powerP.size()-1, 0, 0, 0);
+    if (maxFactorsSum < 0) {
+        printf("Impossible\n");
+        return 0;
+    }
+    printf("%d =", N);
+    int i;
+    for (i=0; i<ans.size()-1; i++)
+        printf(" %d^%d +", ans[i], P);
+    printf(" %d^%d\n", ans[i], P);
+}
+```
+
+
+## 1104 Sum of Number Segments (20 分)
+
+1. 注意，double必须放在最左边，不然会损失精度（反正测试过不了）。不懂。
+2. 规律题，暴力会超时。
+
+```
+#include <iostream>
+using namespace std;
+
+int N, i, j;
+
+double sum, thisSum;
+
+double a[100000];
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%lf", a+i);
+    /*
+    for (i=0; i<N; i++) {
+        for (j=0; j<=i; j++)
+            sum += a[j];
+    }
+    */
+    /*
+    for (i=0; i<N; i++) {
+        thisSum += a[i]; // cache，使得不必重新累加已经加过的元素。
+        sum += thisSum;
+    }
+    thisSum = sum;
+    for (i=0; i<N-1; i++) {
+        thisSum -= a[i]*(N-i);
+        sum += thisSum;
+    }
+    */
+    for (i=0; i<N; i++) {
+        sum += a[i]*(N-i)*(i+1); // 如果按照这种解法，可以不用完整存储整个输入序列。
+		// 注意，double必须放在最左边，不然会损失精度（反正测试过不了）。不懂。
+    }
+    printf("%.2lf\n", sum);
+}
+```
+
+
+## 1105 Spiral Matrix (25 分)
+
+1. 因为无法找到每个点的坐标的计算公式，所以只能模拟了。
+2. 第二个是大佬的代码，tql。http://lulalap.com/2018/11/28/PAT-A1105-cpp/
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <functional>
+#include <climits>
+#include <cmath>
+#include <vector>
+using namespace std;
+
+int N, i, j, k, m, n, min_=INT_MAX;
+
+int a[10000];
+
+int v[10000][10000];
+
+// 水平移动也就是保持行不变，列改变。
+pair<int, int> direction, left_(0, -1), right_(0, 1), up(-1, 0), down(1, 0);
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%d", a+i);
+    sort(a, a+i, greater<int>());
+    int sq = sqrt(N);
+    for (i=1; i<=sq; i++) {
+        if (N%i==0) {
+            if (N/i < i) // m>=n
+                break;
+            if (N/i-i < min_) {
+                m = N/i;
+                n = i;
+                min_ = m-n;
+            }
+        }
+    }
+
+    // j自增水平往右，k自增竖直向下。
+    direction = right_;
+    // 下面的这个算法的结构，确定了upBound比较特殊，它要在向下走时，就自增降下来，这样后面绕完一圈的时候才能成功地进入下一圈。
+    int leftBound=-1, rightBound=n, upBound=-1, downBound=m;
+    for (j=k=i=0; i<N; i++) {
+        v[j][k] = a[i];
+        j += direction.first;
+        k += direction.second;
+        if (k == rightBound) {
+            direction = down;
+            j++;
+            k--;
+            upBound++; // 仅在向下走时才自增upBound。
+        } else if (j == downBound) {
+            direction = left_;
+            j--;
+            k--;
+        } else if (k == leftBound) {
+            direction = up;
+            k++;
+            j--;
+        } else if (j == upBound) {
+            direction = right_;
+            k++;
+            j++;
+            // 缩小边界。
+            leftBound++;
+            // upBound++; // upBound是特殊的，仅在向下走时才自增。
+            rightBound--;
+            downBound--;
+        }
+    }
+    for (i=0; i<m; i++) {
+        printf("%d", v[i][0]);
+        for (j=1; j<n; j++)
+            printf(" %d", v[i][j]);
+        printf("\n");
+    }
+}
+```
+
+```cpp
+#include <cstdio>
+#include <cmath>
+#include <cstring>
+#include <algorithm>
+using namespace std;
+bool cmp(int a, int b){ return a > b; }
+int main(){
+  int N, S[10010];
+  scanf("%d", &N);
+  int n = (int)sqrt(1.0 * N);
+  while(N % n != 0) n--;
+  int m = N / n;
+  int ans[m][n];
+  memset(ans,0,sizeof(ans));//用于判断是否被赋值过
+  for(int i = 0; i < N; i++) scanf("%d", &S[i]);
+  sort(S, S + N, cmp);
+  int i = 0, j = 0, k = 0;
+  ans[i][j] = S[k++];//第一个赋值
+  while(k < N){
+    while(j < n - 1 && !ans[i][j+1]) ans[i][++j] = S[k++];//从左向右
+    while(i < m - 1 && !ans[i+1][j]) ans[++i][j] = S[k++];//从上向下
+    while(j > 0 && !ans[i][j-1]) ans[i][--j] = S[k++];//从右往左
+    while(i > 0 && !ans[i-1][j]) ans[--i][j] = S[k++];//从下往上
+  }
+  for(int i = 0; i < m; i++){
+    for(int j = 0; j < n; j++){
+      if(j != 0) printf(" ");
+      printf("%d", ans[i][j]);
+    }
+    printf("\n");
+  }
+  return 0;
+}
+```
+
+
+## 1106 Lowest Price in Supply Chain (25 分)
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <vector>
+#include <cmath>
+using namespace std;
+
+vector<int> a[100000];
+
+int N, i, K, x, nRetailers;
+
+double P, r;
+
+void bfs() {
+    queue<int> q;
+    q.push(0);
+    q.push(-1);
+    while (!q.empty()) {
+        x = q.front();
+        q.pop();
+        if (x == -1) { // 一层的结点处理完了。
+            // 这里不能有这个判断，因为只有非零售商才入队，考虑某一层的child全是零售商，那么就没有入队的，那么这里就会return，在计算出下一层销售价之前！
+            /*
+            if (q.empty()) // 这一个判断在这里并不是必须的，因为一定有零售商出现。
+                return;
+            */
+            P *= (1+r); // 下一层的销售价。
+            if (nRetailers > 0)
+                return;
+            q.push(-1);
+            continue;
+        }
+        for (int child: a[x]) {
+            if (a[child].empty())
+                nRetailers++;
+            else
+                q.push(child); // 非零售商才入队。
+        }
+    }
+}
+
+int main() {
+    scanf("%d %lf %lf", &N, &P, &r);
+    if (N == 1) {
+        printf("%.4lf 1\n", P);
+        return 0;
+    }
+    r /= 100; // r是百分数，转换为小数。
+    for (i=0; i<N; i++) {
+        scanf("%d", &K);
+        while (K--) {
+            scanf("%d", &x);
+            a[i].push_back(x);
+        }
+    }
+    bfs();
+    printf("%.4lf %d\n", P, nRetailers);
+}
+```
+
+
+## 1107 Social Clusters (30 分)
+
+1. 利用dfs()次数判断连通子图个数。
+2. 把有相同爱好的人连起来，所以每个爱好设置一个vector，里面是有该爱好的人，对于一个人的爱好输入，查找对应的vector，把这个人和vector中的人连起来。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <functional>
+using namespace std;
+
+int N, K, i, hobby, cnt, nSubGraph;
+
+// 编号从1开始。
+vector<int> hobbies[1001]; // hobbies[i]存储有爱好i的人的id。
+
+bool edge[1001][1001];
+
+bool visited[1001];
+
+vector<int> cnts;
+
+void dfs(int v) {
+    visited[v] = true;
+    cnt++;
+
+    for (int i=1; i<=N; i++) {
+        if (!visited[i] && edge[v][i]!=0)
+            dfs(i);
+    }
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=1; i<=N; i++) { // 注意编号从1开始，所以循环遍历i从1开始。
+        scanf("%d: ", &K); // 记得把整数之间的非空白符吃掉，不然后面接受整数就会出错。
+        while (K--) {
+            scanf("%d", &hobby);
+            for (int person: hobbies[hobby]) {
+                // 无向图。
+                edge[i][person] = true;
+                edge[person][i] = true;
+            }
+            hobbies[hobby].push_back(i);
+        }
+    }
+    for (i=1; i<=N; i++) {
+        if (!visited[i]) {
+            cnt = 0;
+            dfs(i);
+            cnts.push_back(cnt);
+            nSubGraph++;
+        }
+    }
+    printf("%d\n", nSubGraph);
+    sort(cnts.begin(), cnts.end(), greater<int>());
+    printf("%d", cnts[0]);
+    for (i=1; i<cnts.size(); i++)
+        printf(" %d", cnts[i]);
+}
+```
+
+
+## 1108 Finding Average (20 分)
+
+1. 测试算法对边界是否正常工作，最简单的如输入的数据的上界和下界，如-1000, 1000, 0等。
+2. 判断字符串是否合法独立出一个函数，这样简明一点。
+3. 注意输出时，单数和复数。如"1 number"和"3 numbers"。
+
+```cpp
+#include <iostream>
+#include <string>
+#include <cctype>
+using namespace std;
+
+int N, i, cnt, n; // n是小数位数。
+
+double sum, x;
+
+bool dot;
+
+string s;
+
+bool judge() {
+    dot = false;
+    n = 0;
+    i = s[0]=='-'? 1: 0;
+    for (; i<s.size(); i++) {
+        if (s[i] == '.') {
+            if (dot)
+                return false;
+            dot = true;
+            continue;
+        }
+        if (!isdigit(s[i]))
+            return false;
+        if (dot) // 计算小数位数，XXX 注意只有在出现了小数点后才累加n，否则保持n为0。
+            n++;
+    }
+    if (n>2)
+        return false;
+    x = stod(s);
+    if (x>1e3 || x<-1e3)
+        return false;
+    return true;
+}
+
+int main() {
+    cin >> N;
+    while (N--) {
+        cin >> s;
+        if (judge()) {
+            sum += x;
+            cnt++;
+        } else {
+            printf("ERROR: %s is not a legal number\n", s.c_str());
+        }
+    }
+    if (cnt == 0) {
+        // In case the average cannot be calculated, output Undefined instead of Y.
+        printf("The average of 0 numbers is Undefined\n");
+    } else if (cnt == 1) {
+        // In case K is only 1, output The average of 1 number is Y instead.
+        printf("The average of 1 number is %.2f\n", sum);
+    } else {
+        printf("The average of %d numbers is %.2f\n", cnt, sum/cnt);
+    }
+}
+```
+
+
+## 1109 Group Photo (25 分)
+
+1. 字符串拼接。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+int N, K, i, n, j, k, x;
+
+bool left; // 每一行定好中间的人后，后面先插入中间的人的左边还是右边。
+
+struct Person {
+    char name[10];
+    int height;
+    Person() { name[0]=' '; } // 设置前导空格。
+};
+
+Person a[10000];
+
+bool cmp(const Person& a, const Person& b) {
+    if (a.height != b.height) return a.height>b.height;
+    return strcmp(a.name, b.name)<0;
+}
+
+string s;
+
+int main() {
+    scanf("%d %d", &N, &K);
+    n = N/K;
+    /*
+    if (n&1) // 如果每行人数n是奇数，则中间的人左右两边的空位一样多，可从左边开始插入，否则，右边比左边多一个空位，先从右边开始插入。
+        left = true;
+    */
+    // 事实上，看题目给出的测试用例，总是从左边开始插入。
+    for (i=0; i<N; i++)
+        scanf("%s %d", a[i].name+1, &a[i].height); // 从前导空格后开始填充。
+    sort(a, a+N, cmp);
+    if (N%n != 0)
+        x = N%n+n;
+    else
+        x = n;
+    for (i=0; i+x<=N; ) { // 可以取等于号，因为左闭加区间长度等于右开，N也是右开。
+        // 输出一行。
+        for (k=0, j=i; j<i+x; j++, k++) {
+            if (k&1)
+                s = a[j].name + s; // a[j].name自带了前导空格。
+            else
+                s = s + a[j].name;
+        }
+        printf("%s\n", s.c_str()+1); // 记得跳过前导空格。
+        s.clear();
+        i += x;
+        x = n;
+    }
+}
+```
+
+
+## 1110 Complete Binary Tree (25 分)
+
+1. 完全二叉搜索树可以用数组来存储，结点i的左孩子是2*i，右孩子是2*i+1，如果越界了，说明该孩子不存在。
+2. 思路是将输入的链式存储的树转换为线性存储的树。刚好完全二叉搜索树可以线性存储，**注意从1开始，否则2*i就会失效**。
+3. 这里干脆用string接受输入，而不用字符接受输入，然后用stoi()提取整数。**而且也不能用字符接受输入，因为结点数可能大于11个**。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+struct Node {
+    int left, right;
+    Node(): left(-1), right(-1) {}
+};
+
+int N, i, root;
+
+string lchild, rchild;
+
+Node a[20];
+
+int cbst[21]; // 完全二叉搜索树可以用数组来存储，结点i的左孩子是2*i，右孩子是2*i+1，如果越界了，说明该孩子不存在。
+
+bool pointed[20];
+
+// 遍历输入的树，建立完全二叉搜索树，存储在数组中。
+void traversal(int root, int i) {
+    if (root != -1 && i<=N) {
+        cbst[i] = root;
+        traversal(a[root].left, 2*i);
+        traversal(a[root].right, 2*i+1);
+    }
+}
+
+int main() {
+    // scanf("%d\n", &N); // 因为后面要接受字符输入，所以要吃掉\n。
+    cin >> N;
+    for (i=0; i<N; i++) {
+        cin >> lchild >> rchild; // 这里干脆用string接受输入，而不用字符接受输入，然后用stoi()提取整数。
+        if (lchild[0] != '-') {
+            a[i].left = stoi(lchild);
+            pointed[a[i].left] = true;
+        }
+        if (rchild[0] != '-') {
+            a[i].right = stoi(rchild);
+            pointed[a[i].right] = true;
+        }
+    }
+    for (i=0; pointed[i]; i++)
+        ;
+    root = i; // 没有边指向结点i，所以结点i是根。
+    for (i=1; i<=N; i++)
+        cbst[i] = -1; // 0是合法值，结点从0开始编号。
+    traversal(root, 1);
+    // for (i=1; i<=N && cbst[i]!=0; i++) // 0是合法值，结点从0开始编号。
+    for (i=1; i<=N && cbst[i]!=-1; i++)
+        ;
+    if (i > N) {
+        printf("YES %d\n", cbst[N]);
+    } else {
+        printf("NO %d\n", root);
+    }
+}
+```
+

@@ -1,0 +1,329 @@
+## 1032 Sharing (25 分)
+
+1. 找到两个链表中公共的部分的第一个结点。
+
+```cpp
+#include <iostream>
+#include <unordered_map>
+using namespace std;
+
+struct Node {
+    int next_;
+    bool flag;
+    Node(): flag(false) {}
+};
+
+unordered_map<int, Node> m;
+
+int main() {
+    int N, i, addr, next_;
+    int head1, head2;
+    scanf("%d %d %d", &head1, &head2, &N);
+    for (i=0; i<N; i++) {
+        // 忽略字符输入。
+        scanf("%d %*c %d", &addr, &next_);
+        m[addr].next_ = next_;
+    }
+    for (; head1!=-1; head1=m[head1].next_) {
+        m[head1].flag = true;
+    }
+    for (; head2!=-1; head2=m[head2].next_) {
+        if (m[head2].flag) {
+            printf("%05d\n", head2); // 注意，题目中提到地址是5位数字，那么输出地址时不足5位要补齐0。
+            return 0;
+        }
+    }
+    printf("-1\n");
+}
+```
+
+
+## 1051 Pop Sequence (25 分)
+
+5 7 5
+1 2 3 4 5 6 7 // YES
+3 2 1 7 5 6 4 // NO
+7 6 5 4 3 2 1 // NO
+5 6 4 3 7 2 1 // YES
+1 7 6 5 4 3 2 // NO
+
+```cpp
+#include <iostream>
+#include <stack>
+using namespace std;
+
+int M, N, K, i, j, k, x, max_, flag;
+
+stack<int> s;
+
+int main() {
+    scanf("%d %d %d", &M, &N, &K);
+    for (i=0; i<K; i++) {
+        max_ = 1;
+        flag = true;
+        for (j=0; j<N; j++) {
+            scanf("%d", &x);
+            if (!s.empty() && s.top()==x) {
+                s.pop();
+                continue;
+            }
+			// 否则，我们需要先将[max_, x]顺序入栈，再将x出栈，这里优化了将x出栈，直接不将x入栈。
+            if (x < max_) {
+				// 小于max_的数已经在栈中，或被推入栈中后已经被弹出了。
+                flag = false;
+                // break; // XXX 注意不能break，而要继续循环接受完输入。也可以先存储输入，再一起处理。
+            }
+            for (k=max_; k<x; k++)
+                s.push(k);
+            if (s.size()+1 > M) { // 注意要加1，因为我们省略了将x入栈的步骤。
+                flag = false;
+                // break; 
+            }
+            if (x+1 > max_)
+                max_ = x+1;
+        }
+        if (flag)
+            printf("YES\n");
+        else
+            printf("NO\n");
+		// 记得要清空栈，避免影响下次查询。
+        // s.clear();
+        while(!s.empty()) s.pop();
+    }
+}
+```
+
+
+## 1052 Linked List Sorting (25 分)
+
+1. 注意输入的结点不一定在以head为头结点的List中，这些结点是无效的。
+3. std::sort，cmp函数的定义，首先将有效的结点放前面，无效的结点放后面，然后有效结点和无效结点内部分别按key排序。
+4. 注意，由于结点不是顺序存储，而是按照addr存储，所以要排序整一个list，而不是list+N。
+5. 注意，对于输出格式，输出时，如果地址不足5位，要补0。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+struct Node {
+    int valid;
+    int addr;
+    int key;
+    int next;
+};
+
+int N, i, head, nValid, addr;
+
+// XXX 一开始先以addr为下标。
+Node list[100000]; // .bss，flag默认初始化为零值。
+
+auto cmp = [](const Node& a, const Node& b){ return a.valid!=b.valid? a.valid>b.valid: a.key<b.key; };
+
+int main() {
+    scanf("%d %d", &N, &head);
+    for (i=0; i<N; i++) {
+        scanf("%d", &addr);
+        scanf("%d %d", &list[addr].key, &list[addr].next);
+        list[addr].addr = addr;
+    }
+    while (head != -1) {
+        nValid++;
+        list[head].valid = 1; // 先设置
+        head = list[head].next; // 再移到下一个结点
+    }
+    if (nValid == 0) {
+        printf("0 -1\n");
+        return 0;
+    }
+    sort(list, list+100000, cmp); // XXX 注意，由于结点不是顺序存储，而是按照addr存储，所以要排序整一个list，而不是list+N。
+	for (i=0; i<nValid; i++)
+        list[i].next = list[i+1].addr;
+    printf("%d %05d\n", nValid, list[0].addr);
+    for (i=0; i<nValid-1; i++)
+        printf("%05d %d %05d\n", list[i].addr, list[i].key, list[i+1].addr);
+    printf("%05d %d -1\n", list[i].addr, list[i].key);
+}
+```
+
+
+## 1074 Reversing Linked List (25 分)
+
+1. 第一种是取巧偷懒的做法，std::reverse。
+2. 反转链表的这道题要好好看一下。
+
+```cpp
+#include <iostream>
+#include <unordered_map>
+#include <algorithm>
+using namespace std;
+
+int N, K, i, n, head, addr, key, next_;
+
+// XXX 因为我们连续存储结点，而next指针的值就是下一个结点的地址嘛。
+
+unordered_map<int, pair<int, int>> nodes;
+int list[100001];
+
+int main() {
+    scanf("%d %d %d", &head, &N, &K);
+    for (i=0; i<N; i++) {
+        scanf("%d %d %d", &addr, &key, &next_);
+        nodes[addr] = pair<int, int>(key, next_);
+    }
+	// 把链表中各个结点的地址顺序存储在一个数组中，然后对数组每K段进行反转，而next指针的值就是下一个结点的地址嘛。
+	// 这样我们在反转的时候就不必修改next指针了！
+    for (n=0; head!=-1; n++) {
+        list[n] = head;
+        head = nodes[head].second;
+    }
+    for (i=0; i+K<=n; i+=K) { // 反转n/k段。注意这里要判断`i+K<=n`，避免循环中的`list+i+K`“越界”了。
+        reverse(list+i, list+i+K);
+    }
+    for (i=0; i<n-1; i++) {
+        printf("%05d %d %05d\n", list[i], nodes[list[i]].first, list[i+1]);
+    }
+    printf("%05d %d -1\n", list[i], nodes[list[i]].first);
+}
+```
+
+
+```cpp
+#include <iostream>
+#include <unordered_map>
+using namespace std;
+
+int head, N, K, n;
+
+struct Node {
+    int addr, data, next;
+    Node(int a, int d, int n): addr(a), data(d), next(n) {}
+    Node() = default;
+};
+
+unordered_map<int, Node> m;
+
+// 反转链表有两种方法，
+// 一种是头插法，要求有一个哨兵结点，且适用于反转整个链表。
+// 一种是下面的三指针法，最好也要有一个哨兵结点，会方便一点，这种适用于反转部分链表。
+int reverse_(int head) {
+    int p=m[head].next, q=m[p].next, r;
+    int j;
+    for (j=1; j<K; j++) {
+        r = m[q].next;
+        m[q].next = p;
+        p = q;
+        q = r;
+    }
+    // p指向反转后的链表的头结点，q指向下一个待反转序列的第一个结点。
+    int temp = m[head].next;
+    m[m[head].next].next = q;
+    m[head].next = p;
+    return temp; // 返回下一个待反转序列的哨兵结点。
+}
+
+int main() {
+    int i, j, addr, data, next_;
+    scanf("%d %d %d", &head, &N, &K);
+    for (i=0; i<N; i++) {
+        scanf("%d %d %d", &addr, &data, &next_);
+        m[addr] = Node(addr, data, next_);
+    }
+    // 先遍历一遍过滤不在链表中的结点，而且得到链表长度。
+    m[-2] = Node(-2, -2, head); // 哨兵结点。
+    // while (head) { // 错误，0并不表示链表结束，-1才是。
+    while (head != -1) {
+        n++;
+        head = m[head].next;
+    }
+    head = -2;
+    for (i=0; i+K<=n; i+=K) { // i+K是右开，所以可以等于同样是右开的n。
+        head = reverse_(head);
+    }
+    head = m[-2].next;
+    while (m[head].next != -1) {
+        printf("%05d %d %05d\n", head, m[head].data, m[head].next);
+        head = m[head].next;
+    }
+    printf("%05d %d -1\n", head, m[head].data);
+}
+```
+
+
+## 1133 Splitting A Linked List (25 分)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+struct Node {
+    int data;
+    int next;
+    Node(): next(-1) {}
+};
+
+int N, K, head, headNegative, headInK, i, addr, next_, data, p, pNegative, pInK, q;
+
+Node list[100003]; // 以结点的地址为下标。
+
+int main() {
+    scanf("%d %d %d", &head, &N, &K);
+    for (i=0; i<N; i++) {
+        scanf("%d %d %d", &addr, &data, &next_);
+        list[addr].data = data;
+        list[addr].next = next_;
+    }
+    // 加入一个前驱结点，方便操作。
+    list[100000].next = head;
+    head = 100000;
+    p = head;
+    headNegative = 100001;
+    list[headNegative].next = -1;
+    // list[headNegative].next = list[head].next; // 这会增加编码复杂度，因为要在下面的循环中时刻维护这个next值。
+    pNegative = headNegative;
+    headInK = 100002;
+    list[headInK].next = -1;
+    // list[headInK].next = list[head].next;
+    pInK = headInK;
+    while (list[p].next != -1) { // p指向正要处理的结点的前驱结点。
+        q = list[p].next; // q指向当前要处理的结点。
+        if (list[q].data < 0) {
+            // 从原链表中删去，插入负数链表中。
+            list[p].next = list[q].next; // 删去。
+            list[pNegative].next = q; // 插入负数链表尾部。
+            list[q].next = -1;
+            // list[q].next = list[headInK].next;
+            pNegative = q;
+        } else if (list[q].data>=0 && list[q].data<=K) {
+            // 同上。
+            list[p].next = list[q].next; // 删去。
+            list[pInK].next = q;
+            list[q].next = -1;
+            // list[q].next = list[head].next;
+            pInK = q;
+        } else {
+            // 不符合条件，移到下一个结点。
+            p = list[p].next;
+        }
+    }
+    // 将三个链表首尾拼接起来，注意不要把头结点接进去。
+    if (pNegative==headNegative && pInK==headInK) {
+        p = list[head].next;
+    } else if (pNegative==headNegative && pInK!=headInK) {
+        list[pInK].next = list[head].next;
+        p = list[headInK].next;
+    } else if (pNegative!=headNegative && pInK==headInK) {
+        list[pNegative].next = list[head].next;
+        p = list[headNegative].next;
+    } else {
+        list[pNegative].next = list[headInK].next;
+        list[pInK].next = list[head].next;
+        p = list[headNegative].next;
+    }
+    while (list[p].next != -1) { // 因为没有插入和删除，不需要修改前驱结点，只是简单地遍历，所以不需要两个指针，只需p指向当前要处理的结点。
+        printf("%05d %d %05d\n", p, list[p].data, list[p].next);
+        p = list[p].next;
+    }
+    printf("%05d %d -1\n", p, list[p].data);
+}
+```

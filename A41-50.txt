@@ -1,0 +1,633 @@
+## 1041 Be Unique (20 分)
+
+1. 手动做map，空间换时间。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int i, j, n;
+
+int num[10001];
+
+int a[100001];
+
+int main() {
+    scanf("%d", &n);
+    for (i=0; i<n; i++) {
+        scanf("%d", &j);
+        a[i] = j;
+        num[j]++;
+    }
+    for (i=0; i<n; i++) {
+        if (num[a[i]] == 1) {
+            printf("%d\n", a[i]);
+            return 0;
+        }
+    }
+    printf("None\n");
+}
+```
+
+
+## 1042 Shuffling Machine (20 分)
+
+1. 引用，起别名，避免拷贝。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+const int inf = 0x7fffffff;
+
+int i, j, n;
+
+// A given order is a permutation of distinct integers in [1, 54].
+
+string s[55] = {"", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "H13", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C13", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "J1", "J2"};
+
+string s1[55];
+
+int a[55];
+
+int main() {
+    scanf("%d", &n);
+    for (i=1; i<55; i++) {
+        scanf("%d", &j);
+        a[i] = j;
+    }
+    for (i=0; i<n; i++) {
+        for (j=1; j<55; j++) {
+            if (i%2 == 0)
+                s1[a[j]] = s[j];
+            else
+                s[a[j]] = s1[j];
+        }
+    }
+    string (&r)[55] = (n%2==1)? s1: s; // 引用，避免拷贝。
+    printf("%s", r[1].c_str());
+    for (i=2; i<55; i++)
+        printf(" %s", r[i].c_str());
+}
+```
+
+
+## 1043 Is It a Binary Search Tree (25 分)
+
+1. given a sequence of integer keys, you are supposed to tell if it is the preorder traversal sequence of a BST or the mirror image of a BST.
+2. 先序，这个先是说根先，后序，也就是先左右后根，中序则是先左再根再右。
+3. 二叉搜索树，也成为二叉排序树，对该树，有一个性质，即**对该树进行中序遍历，可以得到一个升序序列**。所以一个朴素的思路是先假设输入序列是二叉搜索树的先序序列，由于二叉排序树的定义，即左子树的key都小于根结点，右子树的key都小于等于根结点，子树也是二叉搜索树（Mirror二叉搜索树的定义类似），所以可以仅仅根据该先序序列来建立一棵树，而不需要`先序+中序`或`后序+中序`。之后对建立的树进行中序遍历，如果得到一个升序/降序的有序序列，则该输入就是一颗二叉搜索树的先序序列，之后后序遍历该树输出后序序列。
+4. https://www.liuchuo.net/archives/2153  分析：假设它是二叉搜索树，一开始isMirror为FALSE，根据二叉搜索树的性质将已知的前序转换为后序，转换过程中，如果发现最后输出的后序数组长度不为n，那就设isMirror为true，然后清空后序数组，重新再转换一次（根据镜面二叉搜索树的性质），如果依旧转换后数组大小不等于n，就输出no否则输出yes。
+5. 第一个思路假设输入是一个BST或Mirror BST的先序序列，第二个思路实事求是，如果输入不是BST或Mirror BST的先序序列，则构造出来的后序序列长度不足。
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+
+struct Node {
+    int key;
+    Node* left;
+    Node* right;
+    Node(int k): key(k), left(nullptr), right(nullptr) {}
+};
+
+int i, j, n;
+
+bool flag1=true, flag2=true;
+
+int a[1001];
+
+vector<int> v;
+
+// r指向尾后位置。
+Node* createBST(int l, int r) {
+    if (l >= r) // 如果l也指向尾后位置，
+        return nullptr;
+    Node* t = new Node(a[l]);
+    int i;
+    for (i=l+1; i<r && a[i]<a[l]; i++)
+        ;
+    t->left = createBST(l+1, i);
+    t->right = createBST(i, r);
+    return t;
+}
+
+// r指向尾后位置。
+Node* createMirrorBST(int l, int r) {
+    if (l >= r)
+        return nullptr;
+    Node* t = new Node(a[l]);
+    int i;
+    for (i=l+1; i<r && a[i]>=a[l]; i++)
+        ;
+    t->left = createMirrorBST(l+1, i);
+    t->right = createMirrorBST(i, r);
+    return t;
+}
+
+void inorderTraversal(Node* t) {
+    if (t) {
+        inorderTraversal(t->left);
+        v.push_back(t->key);
+        inorderTraversal(t->right);
+    }
+}
+
+void postorderTraversal(Node* t) {
+    if (t) {
+        postorderTraversal(t->left);
+        postorderTraversal(t->right);
+        v.push_back(t->key);
+    }
+}
+
+int main() {
+    scanf("%d", &n);
+    for (i=0; i<n; i++)
+        scanf("%d", a+i);
+    if (n == 1) { // 特殊情况。
+        printf("YES\n%d\n", a[0]);
+        return 0;
+    }
+    Node *t;
+    if (a[0] > a[1])
+        t = createBST(0, n);
+    else
+        t = createMirrorBST(0, n);
+    inorderTraversal(t);
+	// 判断中序序列是否有序，对BST是升序，对Mirror BST是降序。
+    if (a[0] > a[1]) {
+        for (i=1; i<v.size(); i++) {
+            if (v[i-1] > v[i]) {
+                flag1 = false;
+                break;
+            }
+        }
+    } else {
+        for (i=1; i<v.size(); i++) {
+            if (v[i-1] < v[i]) {
+                flag2 = false;
+                break;
+            }
+        }
+    }
+    if (!flag1 || !flag2) {
+        printf("NO\n");
+    } else {
+        v.clear();
+        postorderTraversal(t);
+        printf("YES\n%d", v[0]);
+        for (i=1; i<v.size(); i++)
+            printf(" %d", v[i]);
+    }
+}
+```
+
+```cpp
+#include <cstdio>
+#include <vector>
+using namespace std;
+bool isMirror;
+vector<int> pre, post;
+void getpost(int root, int tail) {
+    if(root > tail) return ;
+    int i = root + 1, j = tail;
+    if(!isMirror) {
+        while(i <= tail && pre[root] > pre[i]) i++;
+        while(j > root && pre[root] <= pre[j]) j--;
+    } else {
+        while(i <= tail && pre[root] <= pre[i]) i++;
+        while(j > root && pre[root] > pre[j]) j--;
+    }
+    if(i - j != 1) return ;
+    getpost(root + 1, j);
+    getpost(i, tail);
+    post.push_back(pre[root]);
+}
+int main() {
+    int n;
+    scanf("%d", &n);
+    pre.resize(n);
+    for(int i = 0; i < n; i++)
+        scanf("%d", &pre[i]);
+    getpost(0, n - 1);
+    if(post.size() != n) {
+        isMirror = true;
+        post.clear();
+        getpost(0, n - 1);
+    }
+    if(post.size() == n) {
+        printf("YES\n%d", post[0]);
+        for(int i = 1; i < n; i++)
+            printf(" %d", post[i]);
+    } else {
+        printf("NO");
+    }
+    return 0;
+}
+```
+
+
+## 1044 Shopping in Mars (25 分)
+
+1. 暴力破解会超时。
+2. 将输入保存在sum[i]中，sum[i]表示序列[1, i]的和，注意左右都是闭，然后遍历切割点使用二分查找，O(nlogn)。
+
+```cpp
+#include <iostream>
+#include <map>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+const int inf = 0x7fffffff;
+
+vector<pair<int, int>> r;
+
+map<int, vector<pair<int, int>>> m;
+
+int N, M, i, j, sum, min_;
+
+int a[100001];
+
+int main() {
+    scanf("%d %d", &N, &M);
+    for (i=1; i<=N; i++)
+        scanf("%d", a+i);
+    // 遍历切割点。
+    for (i=1; i<=N; i++) {
+        sum = 0;
+        for (j=i; j<=N; j++) {
+            sum += a[j];
+            if (sum == M) {
+                r.push_back(pair<int, int>(i, j));
+                break;
+            }
+            if (sum > M) {
+                if (m.find(sum) == m.end())
+                    m[sum] = vector<pair<int, int>>();
+                m[sum].push_back(pair<int, int>(i, j));
+                break;
+            }
+        }
+    }
+    if (r.size()) {
+        sort(r.begin(), r.end(), [](const auto& a, const auto& b){ return a.first<b.first; });
+        for (const auto& p: r)
+            printf("%d-%d\n", p.first, p.second);
+    } else {
+        min_ = inf;
+        for (const auto& p: m) {
+            if (p.first < min_)
+                min_ = p.first;
+        }
+        sort(r.begin(), r.end(), [](const auto& a, const auto& b){ return a.first<b.first; });
+        for (const auto& p: m[min_])
+            printf("%d-%d\n", p.first, p.second);
+    }
+}
+```
+
+```cpp
+#include <iostream>
+using namespace std;
+
+const int inf = 0x7fffffff;
+
+int N, M, i, j, min_=inf, temp;
+
+bool flag;
+
+int sum_[100001]; // sum_[i]表示序列[1, i]的和，注意左右都是闭。
+
+// 返回sum_数组[l, r]内第一个大于x的元素的位置。
+int upperBound(int l, int r, int x) {
+    while (l <= r) { // 当l==r时，mid=l=r，还是可以继续循环的。
+        int mid = (l+r)/2;
+        if (sum_[mid] > x) // 不一定是第一个，所以还要继续循环。
+            r = mid-1;
+        else 
+            // sum_[mid] <= x
+            l = mid+1;
+    }
+    return l;
+}
+
+int main() {
+    scanf("%d %d", &N, &M);
+    for (i=1; i<=N; i++) {
+        scanf("%d", sum_+i);
+        sum_[i] += sum_[i-1]; // sum_[0]被默认初始化为0，所以没问题。
+    }
+    // 遍历切割点/左端点。
+    for (i=1; i<=N; i++) {
+        // 找到右端点。
+        j = upperBound(i, N, sum_[i-1]+M);
+        if (sum_[j-1]-sum_[i-1] == M) {
+            printf("%d-%d\n", i, j-1);
+            flag = true;
+        }
+        temp = sum_[j]-sum_[i-1];
+        if (temp > M && temp < min_) {
+            min_ = temp;
+        }
+    }
+    if (!flag) {
+        for (i=1; i<=N; i++) {
+            j = upperBound(i, N, sum_[i-1]+min_);
+            if (sum_[j-1]-sum_[i-1] == min_)
+                printf("%d-%d\n", i, j-1);
+        }
+    }
+}
+```
+
+
+## 1045 Favorite Color Stripe (30 分)
+
+参考：https://www.liuchuo.net/archives/2283
+
+1. 题目大意：给出m中颜色作为喜欢的颜色（同时也给出顺序），然后给出一串长度为L的颜色序列，现在要去掉这个序列中的不喜欢的颜色，然后求剩下序列的一个子序列，使得这个子序列表示的颜色顺序符合自己喜欢的颜色的顺序，不一定要所有喜欢的颜色都出现。
+2. 使用递归能够比较直观地遍历所有的组合，但显然会超时。
+3. 注意到，喜欢的颜色序列是没有顺序的，然而喜欢的颜色序列的下标是有序的。所以可以换个思路存储喜欢的颜色序列，用颜色做下标/key，用该颜色在喜欢的颜色序列中的位置作为value。同理，对于输入的颜色序列，我们先剔除不喜欢的颜色，然后同样按照这个思路存储。这样问题就转换成了，在输入的颜色序列中**寻找最长不下降子序列（不连续）**。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int N, M, L, max_=-1;
+
+int favoriteColor[200];
+
+int a[10000];
+
+void foo1(int start, int color, int length) {
+    for (; start<L && a[start]!=favoriteColor[color]; start++)
+        ;
+    if (start == L) { // 从start开始找不到color，返回。
+        if (length > max_) {
+            max_ = length;
+        }
+        return;
+    }
+    for (int i=0; i<M-color; i++)
+        foo1(start+1, color+i, length+1);
+}
+
+void foo() {
+    for (int i=0; i<M; i++)
+        foo1(0, i, 0);
+}
+
+int main() {
+	int i, j;
+    scanf("%d\n%d", &N, &M);
+    for (i=0; i<M; i++)
+        scanf("%d", favoriteColor+i);
+    scanf("%d", &L);
+    for (i=0; i<L; i++)
+        scanf("%d", a+i);
+    foo();
+    printf("%d\n", max_);
+}
+```
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+
+int N, M, L, i, j, num, x, max_=-1;
+
+int book[201], dp[10000]; // dp[i]表示输入的颜色序列中以a[i]结尾的最长不下降子序列的长度。
+
+int a[10000];
+
+int main() {
+    scanf("%d\n%d", &N, &M);
+    for (i=1; i<=M; i++) {
+        scanf("%d", &x);
+        book[x] = i;
+    }
+    scanf("%d", &L);
+    for (i=num=0; i<L; i++) {
+        scanf("%d", &x);
+        if (book[x] > 0)
+            a[num++] = book[x];
+    }
+    for (i=0; i<num; i++) {
+        dp[i] = 1;
+        for (j=0; j<i; j++) {
+            if (a[i] >= a[j]) // 无需连续，不下降。
+                dp[i] = max(dp[i], dp[j]+1); // 注意这个递推公式。
+        }
+        max_ = max(dp[i], max_);
+    }
+    printf("%d\n", max_);
+}
+```
+
+
+## 1046 Shortest Distance (20 分)
+
+1. 优化：边输入边计算，空间换实践，缓存。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int N, M, L, i, j, a, b, x, y, sum, temp;
+
+int d[100001];
+
+int sums[100001]; // sums[i]表示输入序列[0, i]的和，sums[N-1]就是整个序列的和了。
+
+int main() {
+    scanf("%d", &N);
+    // for (i=0; i<N; i++) {
+    for (i=1; i<=N; i++) {
+        scanf("%d", d+i);
+        sum += d[i]; // 因为是一个环，优化。
+        sums[i] = sum; // 进一步优化。
+    }
+    scanf("%d", &M);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &a, &b);
+        // 换算到下标。
+        // a--;
+        // b--;
+        // 顺时针，
+        /*
+        x = 0;
+        for (j=a; j!=b; j=(j+1)%N)
+            x += d[j];
+        */
+        // 逆时针，
+        /*
+        y = 0;
+        for (j=b; j!=a; j=(j+1)%N)
+            y += d[j];
+        */
+        // 优化。
+        // printf("%d\n", min(x, sum-x));
+        // 进一步优化。
+        if (b > a)
+            temp = sums[b-1]-sums[a-1];
+        else
+            temp = sums[a-1]-sums[b-1];
+        printf("%d\n", min(temp, sum-temp));
+    }
+}
+```
+
+
+## 1047 Student List for Course (25 分)
+
+1. Zhejiang University has 40,000 students and provides 2,500 courses. Now given the registered course list of each student, you are supposed to output the student name lists of all the courses.
+2. std::sort，注意，不一定非要直接比较cmp参数本身，也可以将参数结合外部变量进行比较。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+int N, K, i, j, n, x;
+
+// 学生从0开始编号。id<->name
+char s[400000][5];
+
+// the courses are numbered from 1 to K.
+vector<int> c[2501];
+
+int main() {
+    scanf("%d %d", &N, &K);
+    for (i=0; i<N; i++) {
+        scanf("%s %d", s[i], &n);
+        for (j=0; j<n; j++) {
+            scanf("%d", &x);
+            c[x].push_back(i); // name只存储一次，推入c[x]的是学生的编号。
+        }
+    }
+    for (i=1; i<=K; i++) {
+        printf("%d %ld\n", i, c[i].size());
+        // 引用捕获全局变量s。
+        sort(c[i].begin(), c[i].end(), [&s](int a, int b){ return strcmp(s[a], s[b])<0; });
+        for (int x: c[i])
+            printf("%s\n", s[x]);
+    }
+}
+```
+
+
+## 1048 Find Coins (25 分)
+
+1. 这一题就像leetcode的two sum。
+2. std::map，如果键是int，且数据量不大，可以用数组代替map。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+const int inf = 0x7fffffff;
+
+int N, M, i, v1=inf;
+
+// map<int, bool> m;
+// 由于硬币的面值不超过500，所以可以直接用数组。
+bool m[501];
+
+int a[100000];
+
+int main() {
+    scanf("%d %d", &N, &M);
+    for (i=0; i<N; i++)
+        scanf("%d", a+i);
+    for (i=0; i<N; i++) {
+        if (m[a[i]]){
+            if (a[i] < v1)
+                v1 = a[i];
+            if (M-a[i] < v1)
+                v1 = M-a[i];
+        } else {
+            m[M-a[i]] = true;
+        }
+    }
+    if (v1 == inf)
+        printf("No Solution\n");
+    else if (v1 < M-v1)
+        printf("%d %d\n", v1, M-v1);
+    else if (v1 >= M-v1)
+        printf("%d %d\n", M-v1, v1);
+}
+```
+
+
+## 1049 Counting Ones (30 分)
+
+1. 抹去低位、留下高位，一般想到除法/右移；抹掉高位、留下低位，一般考虑模运算。
+2. https://www.liuchuo.net/archives/2305
+
+对于now，有三种情况：
+1.now == 0 : 那么 ans += left * a; // 因为now==0说明now位只有在left从0~left-1的时候会产生1，所以会产生left次，now每一次出现1，右边会重复从0~999…出现a次（如a=10，则0, 1, 2, 3, 4, 5, 6, 7, 8, 9共10次，10次now为1）
+2.now == 1 : ans += left * a + right + 1;// now = 1的时候就要比上一步多加一个当now为1的时候右边出现0~right个数导致的now为1的次数
+3.now >= 2 : ans += (left + 1) * a;// now大于等于2就左边0~left的时候会在now位置产生1，所以会产生left+1次，右边会重复从0~999…出现a次（第a次重复到999…后会进位使得now变为2）
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int n, left = 0, right = 0, a = 1, now = 1, ans = 0;
+    scanf("%d", &n);
+    while(n / a) { // 如果还有高位的话，
+        left = n / (a * 10), now = n / a % 10, right = n % a;
+        if(now == 0) ans += left * a;
+        else if(now == 1) ans += left * a + right + 1;
+        else ans += (left + 1) * a;
+        a = a * 10;
+    }
+    printf("%d", ans);
+    return 0;
+}
+```
+
+
+## 1050 String Subtraction (20 分)
+
+1. 由于s1和s2可能包含空格，所以要用getline而不是scanf。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+int i, j;
+
+char s3[10000];
+
+string s1, s2;
+
+bool book[256];
+
+int main() {
+	// 由于s1和s2可能包含空格，所以要用getline而不是scanf。
+    getline(cin, s1);
+    getline(cin, s2);
+    for (i=0; i<s2.size(); i++)
+        book[s2[i]] = true;
+    for (j=i=0; i<s1.size(); i++) {
+        if (!book[s1[i]])
+            s3[j++] = s1[i];
+    }
+    s3[j] = '\0';
+    printf("%s\n", s3);
+}
+```
+

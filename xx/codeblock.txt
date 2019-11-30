@@ -1,0 +1,7 @@
+打开C++11编译选项。
+
+Go to Toolbar -> Settings -> Compiler
+In the Selected compiler drop-down menu, make sure GNU GCC Compiler is selected
+Below that, select the compiler settings tab and then the compiler flags tab underneath
+In the list below, make sure the box for "Have g++ follow the C++11 ISO C++  language standard [-std=c++11]" is checked
+Click OK to save

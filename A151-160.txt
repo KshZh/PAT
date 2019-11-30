@@ -1,0 +1,386 @@
+## 1151 LCA in a Binary Tree (30 分)
+
+1. 中序序列（左根右）的特点，根的左子树的结点的下标小于根，右子树的结点的下标大于根。由此，通过比较下标，可以很容易确定a是否是u和v的最近公共祖先。
+2. 题目还给出了先序序列（根左右），刚好，我们可以从根开始往下搜索，不满足时逐步缩小搜索范围。
+3. 如果实在不行，没思路，那就用中序和先序序列建树，然后分别bfs存储根到u和v的路径，比较两个路径，找到最后一个一样的结点，这个结点就是u和v的LCA。
+4. 还有一种就是在内存中建树，然后：
+
+```cpp
+node* lca(node* root,int x1,int x2){
+    if(root==NULL)return NULL;
+    if(root->data==x1 || root->data==x2) return root;
+    node* left = lca(root->left,x1,x2);
+    node* right = lca(root->right,x1,x2);
+    if(left && right) return root;
+    else if(left==NULL) return right;
+    else return left;
+}
+```
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+using namespace std;
+
+unordered_map<int, int> idxInInorder;
+
+int main() {
+    int u, v, M, N, i, idxu, idxv, idxa;
+    bool flag1, flag2;
+    scanf("%d %d", &M, &N);
+    vector<int> pre(N);
+    for (i=0; i<N; i++) {
+        scanf("%d", &u);
+        idxInInorder[u] = i;
+    }
+    for (i=0; i<N; i++)
+        scanf("%d", &pre[i]);
+    while (M--) {
+        scanf("%d %d", &u, &v);
+        flag1 = flag2 = false;
+        if (idxInInorder.find(u) == idxInInorder.end())
+            flag1 = true;
+        if (idxInInorder.find(v) == idxInInorder.end())
+            flag2 = true;
+        if (flag1 || flag2) {
+            if (flag1 && flag2)
+                printf("ERROR: %d and %d are not found.\n", u, v);
+            else if (flag1)
+                printf("ERROR: %d is not found.\n", u);
+            else
+                printf("ERROR: %d is not found.\n", v);
+            continue;
+        }
+        idxu = idxInInorder[u];
+        idxv = idxInInorder[v];
+        for (i=0; i<N; i++) {
+            idxa = idxInInorder[pre[i]];
+            if ((idxu<idxa&&idxv>idxa) || (idxu>idxa&&idxv<idxa)) {
+                printf("LCA of %d and %d is %d.\n", u, v, pre[i]);
+                break;
+            } else if (idxu == idxa) {
+                printf("%d is an ancestor of %d.\n", u, v);
+                break;
+            } else if (idxv == idxa) {
+                printf("%d is an ancestor of %d.\n", v, u);
+                break;
+            }
+        }
+    }
+}
+```
+
+
+## 1152 Google Recruitment (20 分)
+
+1. 不足位要补零，所以还是直接输出子串吧。
+2. 当表格的利用率很低的时候，就没必要提前打表了。
+
+```cpp
+#include <iostream>
+#include <unordered_set>
+#include <cmath>
+using namespace std;
+
+unordered_set<int> primes;
+
+bool isPrime(int x) {
+    int sq = sqrt(x);
+    for (int i=2; i<=sq; i++) {
+        if (x%i == 0)
+            return false;
+    }
+    return true;
+}
+
+int L, K, x;
+string num;
+
+void makeTable() {
+    // for (int i=2; i<1000000000; i++) {
+    // 缩小范围。
+    int end = pow(10, K);
+    // for (int i=pow(10, K-1); i<pow(10, K); i++) {
+    // 需要计算出低位的，因为可能有 XXX 前导0。
+    for (int i=2; i<pow(10, K); i++) {
+        if (isPrime(i))
+            primes.insert(i);
+    }
+}
+
+int main() {
+    scanf("%d %d", &L, &K);
+    // makeTable();
+    cin >> num;
+    for (int i=0; i+K<=num.size(); i++) {
+        x = stoi(num.substr(i, K));
+        // if (primes.find(x) != primes.end()) {
+		// 当表格的利用率很低的时候，就没必要提前打表了。
+        if (isPrime(x)) {
+            // printf("%d\n", x); // 不足位要补零，所以还是直接输出子串吧。
+            printf("%s\n", num.substr(i, K).c_str());
+            return 0;
+        }
+    }
+    printf("404\n");
+}
+```
+
+
+## 1153 Decode Registration Card of PAT (25 分)
+
+1. 第二份是大佬的代码，没有作预处理，在查询时，直接遍历。
+2. 不管那一类查询，只要结果为空，就要打印NA。
+3. 遇到预处理比较难做的，要不就干脆在查询时遍历吧。
+
+```cpp
+#include <iostream>
+#include <unordered_map>
+#include <algorithm>
+#include <vector>
+using namespace std;
+
+struct Node {
+    string code;
+    int score;
+    Node(string& c, int s): code(c), score(s) {}
+};
+
+unordered_map<char, int> levelIDX{{'B', 0}, {'A', 1}, {'T', 2}};
+
+vector<Node> records[3]; // 按level组织记录。
+
+unordered_map<string, pair<int, int>> type2; // 按site统计总测试数和总分。
+
+unordered_map<string, unordered_map<string, int>> type3; // 按日期，按site输出测试总数。
+
+unordered_map<string, vector<pair<string, int>>> newType3; // 按日期，按site输出测试总数。
+
+bool cmp(const Node& a, const Node& b) {
+    if (a.score != b.score) return a.score>b.score;
+    return a.code<b.code;
+}
+
+bool cmp2(const pair<string, int>& a, const pair<string, int>& b) {
+    if (a.second != b.second) return a.second>b.second;
+    return a.first<b.first;
+}
+
+int main() {
+    int N, M, i, score, type;
+    string code, site, date;
+    char c;
+    scanf("%d %d", &N, &M);
+    for (i=0; i<N; i++) {
+        cin >> code >> score;
+        site = code.substr(1, 3);
+        date = code.substr(4, 6);
+        records[levelIDX[code[0]]].emplace_back(code, score);
+        type2[site].first++; // 因为value会值初始化为0，所以这里可以不用先检查pair是否存在，不存在再创建。
+        type2[site].second += score;
+        type3[date][site]++;
+    }
+    for (i=0; i<3; i++)
+        sort(records[i].begin(), records[i].end(), cmp);
+    for (auto& p1: type3) {
+        for (auto& p2: p1.second)
+            newType3[p1.first].emplace_back(p2.first, p2.second);
+        sort(newType3[p1.first].begin(), newType3[p1.first].end(), cmp2);
+    }
+    for (i=1; i<=M; i++) { // 测试从1开始编号。
+        scanf("%d ", &type); // 要吃掉空格，因为下面可能要接受字符输入。
+        if (type == 1) {
+            scanf("%c", &c);
+            printf("Case %d: %d %c\n", i, type, c);
+			if (!records[levelIDX[c]].empty()) {
+				for (auto& r: records[levelIDX[c]])
+					printf("%s %d\n", r.code.c_str(), r.score);
+			} else
+				printf("NA\n");
+        } else if (type == 2) {
+            cin >> site;
+            printf("Case %d: %d %s\n", i, type, site.c_str());
+            if (type2.find(site) != type2.end())
+                printf("%d %d\n", type2[site].first, type2[site].second);
+            else
+                printf("NA\n");
+        } else {
+            cin >> date;
+            printf("Case %d: %d %s\n", i, type, date.c_str());
+            if (newType3.find(date) != newType3.end()) {
+                for (auto& p: newType3[date])
+                    printf("%s %d\n", p.first.c_str(), p.second);
+            } else 
+                printf("NA\n");
+        }
+    }
+}
+```
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <algorithm>
+using namespace std;
+struct node {
+    string t;
+    int value;
+};
+bool cmp(const node &a, const node &b) {
+    return a.value != b.value ? a.value > b.value : a.t < b.t;
+}
+int main() {
+    int n, k, num;
+    string s;
+    cin >> n >> k;
+    vector<node> v(n);
+    for (int i = 0; i < n; i++)
+        cin >> v[i].t >> v[i].value;
+    for (int i = 1; i <= k; i++) {
+        cin >> num >> s;
+        printf("Case %d: %d %s\n", i, num, s.c_str());
+        vector<node> ans;
+        int cnt = 0, sum = 0;
+        if (num == 1) {
+            for (int j = 0; j < n; j++)
+                if (v[j].t[0] == s[0]) ans.push_back(v[j]);
+        } else if (num == 2) {
+            for (int j = 0; j < n; j++) {
+                if (v[j].t.substr(1, 3) == s) {
+                    cnt++;
+                    sum += v[j].value;
+                }
+            }
+            if (cnt != 0) printf("%d %d\n", cnt, sum);
+        } else if (num == 3) {
+            unordered_map<string, int> m;
+            for (int j = 0; j < n; j++)
+                if (v[j].t.substr(4, 6) == s) m[v[j].t.substr(1, 3)]++;
+            for (auto it : m) ans.push_back({it.first, it.second});
+        }
+        sort(ans.begin(), ans.end(),cmp);
+        for (int j = 0; j < ans.size(); j++)
+            printf("%s %d\n", ans[j].t.c_str(), ans[j].value);
+        if (((num == 1 || num == 3) && ans.size() == 0) || (num == 2 && cnt == 0)) printf("NA\n");
+    }
+    return 0;
+}
+```
+
+
+## 1154 Vertex Coloring (25 分)
+
+1. 虽然是无向图，但只是为了解决这道题，每个边只需要存一次就行了，还能提高算法效率。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <unordered_set>
+using namespace std;
+
+vector<vector<int>> graph;
+
+vector<int> colors;
+
+unordered_set<int> nColors;
+
+int main() {
+    int N, M, K, i, x, y;
+    bool flag;
+    scanf("%d %d", &N, &M);
+    graph.resize(N); // 结点从0开始编号。
+    colors.resize(N);
+    while (M--) {
+        scanf("%d %d", &x, &y);
+        graph[x].push_back(y);
+        // graph[y].push_back(x); // 虽然是无向图，但只是为了解决这道题，每个边只需要存一次就行了，还能提高算法效率。
+    }
+    scanf("%d", &K);
+    while (K--) {
+        for (i=0; i<N; i++) {
+            scanf("%d", &colors[i]);
+            nColors.insert(colors[i]);
+        }
+        flag = true;
+        for (i=0; flag && i<N; i++) {
+            for(int x: graph[i]) {
+                if (colors[x] == colors[i]) {
+                    flag = false;
+                    break;
+                }
+            }
+        }
+        if (flag) {
+            printf("%d-coloring\n", nColors.size());
+        } else {
+            printf("No\n");
+        }
+        nColors.clear();
+    }
+}
+```
+
+
+## 1155 Heap Paths (30 分)
+
+1. 计数器的使用。
+2. 也可以单独用一个函数，从最后一个父结点开始，判断是否符合堆的性质，然后递推到根。
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int cbt[1001];
+
+int N;
+
+vector<vector<int>> paths;
+
+vector<int> path;
+
+void dfs(int root) {
+    path.push_back(cbt[root]);
+    if (root*2+1>N && root*2>N) {
+        paths.push_back(path);
+    }
+    if (root*2+1 <= N)
+        dfs(root*2+1); // 按照题目的打印要求，先遍历右子堆。
+    if (root*2 <= N)
+        dfs(root*2);
+    path.pop_back();
+}
+
+int main() {
+    int i, n1, n2, totalN1, totalN2, total;
+    scanf("%d", &N);
+    for (i=1; i<=N; i++) // 完全二叉树用数组存储，下标要从1开始，否则2*i会失效。
+        scanf("%d", cbt+i);
+    dfs(1);
+    totalN1 = totalN2 = total = 0;
+    for (auto& path: paths) {
+        n1 = n2 = 1; // 两个计数器。
+        printf("%d", path[0]);
+        for (i=1; i<path.size(); i++) {
+            printf(" %d", path[i]);
+            if (path[i] > path[i-1])
+                n1++;
+            else
+                n2++;
+        }
+        printf("\n");
+        totalN1 += n1;
+        totalN2 += n2;
+        total += path.size();
+    }
+	// 必须要所有路径都满足升序或降序，所以放在循环外面判断。
+    if (totalN2 == total)
+        printf("Max Heap\n");
+    else if (totalN1 == total)
+        printf("Min Heap\n");
+    else
+        printf("Not Heap\n");
+}
+```

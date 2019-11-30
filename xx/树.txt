@@ -1,0 +1,1363 @@
+## 1004 Counting Leaves (30 分)
+
+1. 记住层次的BFS。
+2. 因为这是对树的BFS，所以可以不用visited数组防止重复访问同一个结点，如果是图，就要用visited数组防止这种情况发生。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <queue>
+using namespace std;
+
+int N, M;
+
+unordered_map<int, vector<int>> m;
+vector<int> result;
+
+// 记住层次的BFS。
+void bfs() {
+    queue<int> q;
+    q.push(1);
+    int x, last=1, n=0;
+    while (!q.empty()) {
+        x = q.front();
+        q.pop();
+        if (m[x].empty()) {
+            n++;
+        } else {
+            for (int child: m[x]) {
+                q.push(child);
+            }
+        }
+        if (x == last) {
+            result.push_back(n);
+            last = q.back();
+            n = 0;
+        }
+    }
+}
+
+int main() {
+    int i, k, id, x;
+    scanf("%d %d", &N, &M);
+    if (N == 0)
+        return 0;
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &id, &k);
+        while (k--) {
+            scanf("%d", &x);
+            m[id].push_back(x);
+        }
+    }
+    bfs();
+    printf("%d", result[0]);
+    for (i=1; i<result.size(); i++)
+        printf(" %d", result[i]);
+}
+```
+
+
+## 1020 Tree Traversals (25 分)
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <climits>
+#include <queue>
+using namespace std;
+
+struct Node {
+    int data;
+    Node* left;
+    Node* right;
+    Node(int d): data(d), left(nullptr), right(nullptr) {}
+};
+
+vector<int> post, in;
+int N;
+
+Node* foo(int pStart, int iStart, int len) {
+    if (len == 0)
+        return nullptr;
+    int leftLen, rightLen;
+    Node* root = new Node(post[pStart]);
+    int i;
+    for (i=iStart; i<iStart+len && in[i]!=post[pStart]; i++)
+        ;
+    leftLen = i-iStart; // 右开减左闭等于区间长度。
+    rightLen = len - leftLen - 1;
+    root->left = foo(pStart-rightLen-1, iStart, leftLen); // 右开减区间长度等于左闭，所以要再减1。
+    root->right = foo(pStart-1, i+1, rightLen);
+    return root;
+}
+
+void levelOrderTraversal(Node* root) {
+    queue<Node*> q;
+    q.push(root);
+    printf("%d", root->data);
+    Node* p;
+    while (!q.empty()) {
+        p = q.front();
+        q.pop();
+        if (p->left) {
+            q.push(p->left);
+            printf(" %d", p->left->data);
+        }
+        if (p->right) {
+            q.push(p->right);
+            printf(" %d", p->right->data);
+        }
+    }
+}
+
+int main() {
+    int i;
+    scanf("%d", &N);
+    post.resize(N);
+    in.resize(N);
+    for (i=0; i<N; i++)
+        scanf("%d", &post[i]);
+    for (i=0; i<N; i++)
+        scanf("%d", &in[i]);
+    levelOrderTraversal(foo(N-1, 0, N));
+}
+```
+
+
+## 1043 Is It a Binary Search Tree (25 分)
+
+1. 这里也可以传递长度，只不过直接传尾后位置在循环时回方便一点。对于之前用前序和中序确定后序或建树的过程，我们传的是子序列的长度，这是因为前序和中序子序列的尾后位置不一样。
+2. 对于二叉搜索树，结合二叉搜索树的性质，只需一个前序序列即可得到后序序列，不需要中序序列。
+3. 当然也可以先在内存中建立二叉搜索树以及它的镜像，然后通过中序遍历二叉搜索树，看得到的序列是否升序或降序来判断。
+4. 值得一看。
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+vector<int> pre, post;
+
+int N;
+
+bool isMirror;
+
+// 对于二叉搜索树，结合二叉搜索树的性质，只需一个前序序列即可得到后序序列，不需要中序序列。
+void postOrderTraversal(int root, int tail) { // 这里也可以传递长度，只不过直接传尾后位置在循环时回方便一点。
+    int i, j;
+    if (!isMirror) {
+        for (i=root+1; i<tail && pre[i]<pre[root]; i++)
+            ;
+        for (j=i; j<tail && pre[j]>=pre[root]; j++)
+            ;
+    } else {
+        for (i=root+1; i<tail && pre[i]>=pre[root]; i++)
+            ;
+        for (j=i; j<tail && pre[j]<pre[root]; j++)
+            ;
+    }
+    if (j != tail)
+        return;
+    postOrderTraversal(root+1, i); // 左
+    postOrderTraversal(i, tail); // 右
+    post.push_back(pre[root]); // 根
+}
+
+int main() {
+    int i;
+    scanf("%d", &N);
+    pre.resize(N);
+    for (i=0; i<N; i++)
+        scanf("%d", &pre[i]);
+    postOrderTraversal(0, N);
+    if (post.size() != N) {
+        isMirror = true;
+        post.clear();
+        postOrderTraversal(0, N);
+        if (post.size() != N) {
+            printf("NO\n");
+        } else {
+            printf("YES\n");
+            printf("%d", post[0]);
+            for (i=1; i<N; i++)
+                printf(" %d", post[i]);
+        }
+    } else {
+        printf("YES\n");
+        printf("%d", post[0]);
+        for (i=1; i<N; i++)
+            printf(" %d", post[i]);
+    }
+}
+```
+
+
+## 1053 Path of Equal Weight (30 分)
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <vector>
+using namespace std;
+
+struct Node {
+    int weight;
+    vector<int> childs;
+};
+
+// 以结点的id作为key。根的id是0。
+vector<Node> t;
+
+int N, M, target, w;
+
+vector<int> path;
+
+
+// 因为是对树的dfs，所以可以不用visited数组，因为树的定义保证了不会访问重复访问到同一个顶点。
+void dfs(int v) {
+    w += t[v].weight;
+    path.push_back(t[v].weight);
+
+    // 从根到达叶子结点的路径，且路径上的点权和为target。
+    if (t[v].childs.empty() && w==target) {
+        printf("%d", path[0]);
+        for (int i=1; i<path.size(); i++)
+            printf(" %d", path[i]);
+        printf("\n");
+    }
+    if (w < target) {
+        for (int x: t[v].childs)
+            dfs(x);
+    }
+
+    path.pop_back();
+    w -= t[v].weight;
+}
+
+int main() {
+    int i, j, k, x;
+    scanf("%d %d %d", &N, &M, &target);
+    t.resize(N);
+    for (i=0; i<N; i++)
+        scanf("%d", &t[i].weight);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &j, &k);
+        while (k--) {
+            scanf("%d", &x);
+            t[j].childs.push_back(x);
+        }
+        // XXX 如果没有想到在这里先排序的话，只能先一次dfs整理出/存储所有符合条件的路径，再排序输出。
+        sort(t[j].childs.begin(), t[j].childs.end(), [](int a, int b){ return t[a].weight>t[b].weight; });
+    }
+    dfs(0);
+}
+```
+
+
+## 1064 Complete Binary Search Tree (30 分)
+
+1. 给出一个序列，要求构造一颗二叉排序树。显然，构造出的二叉排序树有多种可能。但如果要求构造出的二叉排序树是一颗完全二叉树，那么这样的二叉排序树只有一颗。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+int N;
+vector<int> v, cbt;
+int i = 1;
+
+// 二叉搜索树的性质：中序遍历二叉搜索树可以得到一个升序序列。
+// 所以只需中序遍历完全二叉搜索树，将升序序列依次填入即可。
+void inOrderTraversal(int root) {
+    if (root > N)
+        return;
+    inOrderTraversal(root*2);
+    cbt[root] = v[i++];
+    inOrderTraversal(root*2+1);
+}
+
+int main() {
+    int i;
+    scanf("%d", &N);
+    v.resize(N+1); // 因为cbt要从下标1开始存储，所以输入序列也从下标1开始存储。
+    cbt.reserve(N+1);
+    for (i=1; i<=N; i++) // 注意不要写成`for (i=0; i<N; i++)`或`for (i=1; i<N; i++)`。
+        scanf("%d", &v[i]);
+    sort(v.begin()+1, v.end()); // 注意不要写成`sort(v.begin(), v.end());`。
+    inOrderTraversal(1);
+    // cbt的数组存储就是逐层存储的。
+    printf("%d", cbt[1]);
+    for (i=2; i<=N; i++)
+        printf(" %d", cbt[i]);
+    printf("\n");
+}
+```
+
+
+## 1066 Root of AVL Tree (25 分)
+
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+struct Node {
+    int key;
+    Node* left;
+    Node* right;
+    // 这里可以选择缓存结点的高度（从叶子到该结点的路径长度），
+    // 但是插入时，也要沿途更新路径上的所有结点的高度。
+    Node(int k): key(k), left(nullptr), right(nullptr) {}
+};
+
+int N;
+
+// 插入发现者的左子树的左边导致发现者不平衡，形象点，就是要把发现者的左子树吊起来，发现者落下去。
+Node* LL(Node* root) {
+    // 这个函数体看起来还挺像swap()函数的。
+    Node* newRoot = root->left; // LL
+    root->left = newRoot->right;
+    newRoot->right = root;
+    return newRoot;
+}
+
+// 插入发现者的右子树的右边导致发现者不平衡，那么要把右子树吊起来，发现者落下去。
+Node* RR(Node* root) {
+    Node* newRoot = root->right;
+    root->right = newRoot->left;
+    newRoot->left = root;
+    return newRoot;
+}
+
+// 插入发现者的左子树的右边导致发现者不平衡，先RR，再LL，如LR其名（误）。
+Node* LR(Node* root) {
+    root->left = RR(root->left);
+    return LL(root);
+}
+
+Node* RL(Node* root) {
+    root->right = LL(root->right);
+    return RR(root);
+}
+
+int height(Node* root) {
+    if (root == nullptr)
+        return 0;
+    return 1+max(height(root->left), height(root->right));
+}
+
+// 记住，AVL树首先是一棵二叉搜索树。
+Node* insertNode(Node* root, int key) {
+    if (root == nullptr) {
+        return new Node(key);
+    }
+    if (key < root->key) {
+        root->left = insertNode(root->left, key); // 注意这里别忘了接收返回值更新root->left，说不定插入后调整平衡后，左子树的根变了呢。
+        // 若当前结点是发现者，注意，由于key是往root的左子树中插入的，所以如果出现不平衡，那么必定是左子树的高度大于右子树。
+        if (height(root->left) > height(root->right)+1) {
+            root = key<root->left->key? LL(root): LR(root);
+        }
+        // else 没有不平衡，不需要做什么。
+    } else {
+        root->right = insertNode(root->right, key);
+        if (height(root->right) > height(root->left)+1) {
+            root = key>root->right->key? RR(root): RL(root);
+        }
+        // else 没有不平衡，不需要做什么。
+    }
+    return root;
+}
+
+int main() {
+    int i, x;
+    scanf("%d", &N);
+    Node* root = nullptr;
+    while (N--) {
+        scanf("%d", &x);
+        root = insertNode(root, x);
+    }
+    printf("%d\n", root->key);
+}
+```
+
+
+## 1079 Total Sales of Supply Chain (25 分)
+
+1. 用float可能不够，测试失败可能就是因为这个，可以考虑用double。
+2. 根据题目描述，这是一棵树，所以bfs不需要visited数组。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <queue>
+using namespace std;
+
+int N;
+double P, r;
+
+vector<pair<vector<int>, bool>> nodes; // second是一个flag，表明是否是一个零售商。
+
+// 返回值类型不要写错了，是float不是int。
+double bfs(int v) {
+    int last = v, x;
+    double totalSales=0.0;
+    queue<int> q;
+    q.push(v);
+    while (!q.empty()) {
+        x = q.front();
+        q.pop();
+
+        if (nodes[x].second) {
+            totalSales += nodes[x].first[0]*P;
+        } else {
+            for (int e: nodes[x].first) {
+                q.push(e);
+            }
+        }
+
+        if (x == last) {
+            P *= (1+r);
+            last = q.back();
+        }
+    }
+    return totalSales;
+}
+
+int main() {
+    int i, x, y;
+    scanf("%d %lf %lf", &N, &P, &r);
+    nodes.resize(N);
+    // 注意r是百分数，要转换为小数。
+    r /= 100;
+    for (i=0; i<N; i++) {
+        scanf("%d", &x);
+        if (x == 0) {
+            scanf("%d", &x);
+            nodes[i].first.push_back(x);
+            nodes[i].second = true;
+        } else {
+            nodes[i].second = false;
+            while (x--) {
+                scanf("%d", &y);
+                nodes[i].first.push_back(y);
+            }
+        }
+    }
+    printf("%.1lf\n", bfs(0));
+}
+```
+
+
+## 1086 Tree Traversals Again (25 分)
+
+1. 从题目给出的push和pop序列中得到二叉树的先序和中序序列，然后就可以构造出后序序列了。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <stack>
+using namespace std;
+
+char cmd[5]; // 多一个字节存储'\0'。
+
+int N, i, x;
+
+// 先序序列，先指根先访问。
+vector<int> pre;
+vector<int> in; // 根中。
+vector<int> post; // 根后。
+
+stack<int> s;
+
+// 根据先序和中序序列得到后序序列。
+void postorder_traverse(int pStart, int iStart, int len) {
+    if (len == 0)
+        return; // XXX 别忘了设置递归终点。
+    int root = pre[pStart];
+    for (i=iStart; i<iStart+len && in[i]!=root; i++)
+        ;
+    int lchildLen = i-iStart; // 右开减左闭，得到区间长度。
+    int rchildLen = len - 1 - lchildLen;
+    // 后序遍历，左、右、根。
+    postorder_traverse(pStart+1, iStart, lchildLen);
+    postorder_traverse(pStart+1+lchildLen, iStart+lchildLen+1, rchildLen); // `pStart+1+lchildLen`，左闭加区间长度等于右开，也就是右子序列的左闭。
+    post.push_back(root);
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N;) {
+        scanf("%s", cmd);
+        if (cmd[1] == 'u') {
+            scanf("%d", &x);
+            s.push(x);
+            pre.push_back(x);
+        } else {
+            in.push_back(s.top());
+            s.pop();
+            i++;
+        }
+    }
+    postorder_traverse(0, 0, N);
+    printf("%d", post[0]);
+    for (i=1; i<post.size(); i++)
+        printf(" %d", post[i]);
+}
+```
+
+
+## 1099 Build A Binary Search Tree (30 分)
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <queue>
+using namespace std;
+
+struct Node {
+    int key, left, right;
+    Node(): left(-1), right(-1) {}
+};
+
+// 根所处的位置是0。
+Node bst[100];
+
+int keys[100];
+
+// 利用BST的一个性质，对BST进行中序遍历，可以得到一个升序有序序列。
+
+int N, i, lchild, rchild, x;
+
+void inorderTraversal(int root) {
+    if (root == -1)
+        return;
+    inorderTraversal(bst[root].left);
+    bst[root].key = keys[i++]; // 访问/填充。
+    inorderTraversal(bst[root].right);
+}
+
+void bfs(int root) {
+    queue<int> q;
+    q.push(root);
+    printf("%d", bst[root].key); // 在推入的时候更新相关数据，这里是为了控制输出格式。
+    while (!q.empty()) {
+        x = q.front();
+        q.pop();
+        if (bst[x].left != -1) {
+            q.push(bst[x].left);
+            printf(" %d", bst[bst[x].left].key);
+        }
+        if (bst[x].right != -1) {
+            q.push(bst[x].right);
+            printf(" %d", bst[bst[x].right].key);
+        }
+    }
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d %d", &lchild, &rchild);
+        bst[i].left = lchild;
+        bst[i].right = rchild;
+    }
+    for (i=0; i<N; i++)
+        scanf("%d", keys+i);
+    sort(keys, keys+N); // 权按升序排序。
+    i = 0;
+    inorderTraversal(0);
+    bfs(0);
+}
+```
+
+
+## 1102 Invert a Binary Tree (25 分)
+
+1. 这里并不需要真的去反转二叉树，只需要在遍历输出的时候，把遍历的方向调换一下即可。
+2. 按字符输入，记得吃掉空格和\n等不相干的字符。
+3. 如果要反转的话，用先序遍历函数，函数要返回当前结点的指针，以便更新父结点的左右孩子指针。
+4. 由于递归分支不是同时展开的，所以需要先保存被覆盖的变量。
+
+```cpp
+#include <iostream>
+#include <queue>
+using namespace std;
+
+struct Node {
+    int left, right;
+    Node(): left(-1), right(-1) {}
+};
+
+// 从0开始编号，注意根的编号不是0，要我们自己找。
+Node tree[10];
+
+bool pointed[10];
+
+int N, i, x, root;
+
+char lchild, rchild;
+
+/*
+int reverse(int root) {
+    if (root != -1) {
+        int oldLeft = tree[root].left;
+        tree[root].left = reverse(tree[root].right);
+        // tree[root].right = reverse(tree[root].left); // 由于递归分支不是同时展开的，所以需要先保存被覆盖的变量。
+        tree[root].right = reverse(oldLeft);
+    }
+    return root;
+}
+*/
+
+void bfs() {
+    queue<int> q;
+    q.push(root);
+    printf("%d", root); // 在push()时打印，而不是在pop()时打印，这里是为了控制输出格式。
+    while (!q.empty()) {
+        x = q.front();
+        q.pop();
+        // 从右到左推入。
+        if (tree[x].right != -1) {
+            q.push(tree[x].right);
+            printf(" %d", tree[x].right);
+        }
+        if (tree[x].left != -1) {
+            q.push(tree[x].left);
+            printf(" %d", tree[x].left);
+        }
+    }
+    printf("\n");
+}
+
+void inorderTraversal(int root) {
+    if (root != -1) {
+        // 右中左。
+        inorderTraversal(tree[root].right);
+        if (i == 1) {
+            printf("%d", root);
+            i++;
+        } else {
+            printf(" %d", root);
+        }
+        inorderTraversal(tree[root].left);
+    }
+}
+
+int main() {
+    scanf("%d\n", &N); // 因为后面按字符接受输入，所以这里要把\n吃掉。
+    for (i=0; i<N; i++) {
+        scanf("%c %c\n", &lchild, &rchild); // 记得吃掉空格和\n。XXX 也可以直接用getline()。
+        if (lchild != '-') {
+            tree[i].left = lchild-'0';
+            pointed[tree[i].left] = true;
+        }
+        if (rchild != '-') {
+            tree[i].right = rchild-'0';
+            pointed[tree[i].right] = true;
+        }
+    }
+    for (i=0; i<N && pointed[i]; i++)
+        ;
+    root = i; // 没有边指向结点i，所以它是根。
+    bfs();
+    i = 1;
+    inorderTraversal(root);
+}
+```
+
+
+## 1110 Complete Binary Tree (25 分)
+
+1. 完全二叉搜索树可以用数组来存储，结点i的左孩子是2*i，右孩子是2*i+1，如果越界了，说明该孩子不存在。
+2. 思路是将输入的链式存储的树转换为线性存储的树。刚好完全二叉搜索树可以线性存储，**注意从1开始，否则2*i就会失效**。
+3. 这里干脆用string接受输入，而不用字符接受输入，然后用stoi()提取整数。**而且也不能用字符接受输入，因为结点数可能大于11个**。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+struct Node {
+    int left, right;
+    Node(): left(-1), right(-1) {}
+};
+
+int N, i, root;
+
+string lchild, rchild;
+
+Node a[20];
+
+int cbst[21]; // 完全二叉搜索树可以用数组来存储，结点i的左孩子是2*i，右孩子是2*i+1，如果越界了，说明该孩子不存在。
+
+bool pointed[20];
+
+// 遍历输入的树，建立完全二叉搜索树，存储在数组中。
+void traversal(int root, int i) {
+    if (root != -1 && i<=N) {
+        cbst[i] = root;
+        traversal(a[root].left, 2*i);
+        traversal(a[root].right, 2*i+1);
+    }
+}
+
+int main() {
+    // scanf("%d\n", &N); // 因为后面要接受字符输入，所以要吃掉\n。
+    cin >> N;
+    for (i=0; i<N; i++) {
+        cin >> lchild >> rchild; // 这里干脆用string接受输入，而不用字符接受输入，然后用stoi()提取整数。
+        if (lchild[0] != '-') {
+            a[i].left = stoi(lchild);
+            pointed[a[i].left] = true;
+        }
+        if (rchild[0] != '-') {
+            a[i].right = stoi(rchild);
+            pointed[a[i].right] = true;
+        }
+    }
+    for (i=0; pointed[i]; i++)
+        ;
+    root = i; // 没有边指向结点i，所以结点i是根。
+    for (i=1; i<=N; i++)
+        cbst[i] = -1; // 0是合法值，结点从0开始编号。
+    traversal(root, 1);
+    // for (i=1; i<=N && cbst[i]!=0; i++) // 0是合法值，结点从0开始编号。
+    for (i=1; i<=N && cbst[i]!=-1; i++)
+        ;
+    if (i > N) {
+        printf("YES %d\n", cbst[N]);
+    } else {
+        printf("NO %d\n", root);
+    }
+}
+```
+
+
+## 1119 Pre- and Post-order Traversals (30 分)
+
+1. 记得减一减去当前根，不然就错了。
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int N;
+
+vector<int> pre, post, in;
+
+bool flag = true;
+
+void inorderTraversal(int preStart, int postStart, int len) {
+    if (len == 0)
+        return;
+    if (len == 1) {
+        in.push_back(pre[preStart]);
+        return;
+    }
+    if (len == 2) {
+        // 只有一个孩子的子树，无法确定这是左孩子还是右孩子。
+        flag = false;
+        in.push_back(pre[preStart+1]);
+        in.push_back(pre[preStart]);
+        return;
+    }
+    int root = pre[preStart];
+    int i;
+    for (i=preStart; i<preStart+len && pre[i]!=post[postStart-1]; i++)
+        ;
+    int leftLen = i-(preStart+1);
+    int rightLen = len - leftLen - 1; // 记得减一减去当前根，不然就错了。
+    inorderTraversal(preStart+1, postStart-1-rightLen, leftLen);
+    in.push_back(root);
+    inorderTraversal(preStart+1+leftLen, postStart-1, rightLen);
+}
+
+int main() {
+    int i, j;
+    scanf("%d", &N);
+    pre.resize(N);
+    post.resize(N);
+    for (i=0; i<N; i++)
+        scanf("%d", &pre[i]);
+    for (i=0; i<N; i++)
+        scanf("%d", &post[i]);
+    inorderTraversal(0, N-1, N);
+    if (flag) printf("Yes\n");
+    else printf("No\n");
+    printf("%d", in[0]);
+    for (i=1; i<in.size(); i++)
+        printf(" %d", in[i]);
+    printf("\n");
+}
+```
+
+
+## 1123 Is It a Complete AVL Tree (30 分)
+
+1. `root->left = insert_(root->left, d);`，记得给root->left赋值，因为可能调整平衡后左子树的根结点变了。
+2. 不能边insert边构造cbt数组，因为avl树会调整结点的位置！
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <queue>
+using namespace std;
+
+int N;
+
+struct Node {
+    int data;
+    Node* left;
+    Node* right;
+    Node(int d): data(d), left(nullptr), right(nullptr) {}
+};
+
+Node* LL(Node* root) {
+    Node* newRoot = root->left;
+    root->left = newRoot->right;
+    newRoot->right = root;
+    return newRoot;
+}
+
+Node* RR(Node* root) {
+    Node* newRoot = root->right;
+    root->right = newRoot->left;
+    newRoot->left = root;
+    return newRoot;
+}
+
+Node* LR(Node* root) {
+    root->left = RR(root->left);
+    return LL(root);
+}
+
+Node* RL(Node* root) {
+    root->right = LL(root->right);
+    return RR(root);
+}
+
+int height(Node* root) {
+    if (!root)
+        return 0;
+    return 1 + max(height(root->left), height(root->right));
+}
+
+Node* insert_(Node* root, int d) {
+    if (root == nullptr) {
+        // v[i] = d;
+        return new Node(d);
+    }
+    if (d < root->data) {
+        // root->left = insert_(root->left, d, i*2); // 不能边insert边构造cbt数组，因为avl树会调整结点的位置！
+        root->left = insert_(root->left, d); // XXX 这里记得给root->left赋值，因为可能调整平衡后左子树的根结点变了。
+        if (height(root->left) > height(root->right)+1) {
+            root = d<root->left->data? LL(root): LR(root);
+        }
+    } else {
+        // root->right = insert_(root->right, d, i*2+1);
+        root->right = insert_(root->right, d);
+        if (height(root->right) > height(root->left)+1) {
+            root = d>root->right->data? RR(root): RL(root);
+        }
+    }
+    return root;
+}
+
+bool flag = true;
+bool noChild = false;
+
+void bfs(Node* root) {
+    queue<Node*> q;
+    Node* p;
+    q.push(root);
+    printf("%d", root->data); // 在push()时输出，只是为了控制输出格式。
+    while (!q.empty()) {
+        p = q.front();
+        q.pop();
+        if (p->left) {
+            q.push(p->left);
+            printf(" %d", p->left->data);
+        }
+        if (p->right) {
+            q.push(p->right);
+            printf(" %d", p->right->data);
+        }
+        if (noChild && (p->left!=nullptr || p->right!=nullptr)) {
+            flag = false;
+        }
+        if (p->left==nullptr || p->right==nullptr) {
+            noChild = true;
+        }
+        if (p->left==nullptr && p->right!=nullptr) {
+            flag = false;
+        }
+    }
+}
+
+int main() {
+    int i, x;
+    scanf("%d", &N);
+    Node* root = nullptr;
+    for (i=0; i<N; i++) {
+        scanf("%d", &x);
+        root = insert_(root, x);
+    }
+    bfs(root);
+    if (flag) printf("\nYES\n");
+    else printf("\nNO\n");
+}
+```
+
+
+## 1127 ZigZagging on a Tree (30 分)
+
+1. 根据中序和后序序列建二叉树。
+2. 层序遍历，每一层，轮流顺序输出和逆序输出，顺序输出直接打印，逆序输出先入栈，后打印。
+
+```cpp
+#include <iostream>
+#include <stack>
+#include <queue>
+using namespace std;
+
+struct Node {
+    int data;
+    Node* left;
+    Node* right;
+    Node(): left(nullptr), right(nullptr) {}
+    Node(int d): data(d), left(nullptr), right(nullptr) {}
+};
+
+int N, i;
+
+int inorder[30];
+int postorder[30];
+
+Node* tree;
+
+Node* createBTree(int iStart, int pStart, int len) {
+    if (!len)
+        return nullptr;
+    Node* root = new Node(postorder[pStart]);
+    int postRightSubStart = pStart-1;
+    int inLeftSubStart = iStart;
+    int i;
+    for (i=iStart; inorder[i]!=postorder[pStart]; i++) // 这里没有`i<iStart+len`，因为题目保证序列合法，故一定可以找到。
+        ;
+    int inRightSubStart = i+1;
+    int leftSubLen = i - iStart;
+    int rightSubLen = len - 1 - leftSubLen;
+    int postLeftSubStart = pStart - 1 - rightSubLen;
+    root->left = createBTree(inLeftSubStart, postLeftSubStart, leftSubLen);
+    root->right = createBTree(inRightSubStart, postRightSubStart, rightSubLen);
+    return root;
+}
+
+void bfs() {
+    Node* p;
+    int level = 2;
+    queue<Node*> q;
+    stack<int> s;
+    q.push(tree); // 根是第一层。
+    Node* last = tree;
+    printf("%d", tree->data);
+    while (!q.empty()) {
+        p = q.front();
+        q.pop();
+        if (p->left) {
+            q.push(p->left);
+            if (level%2 == 0)
+                printf(" %d", p->left->data);
+            else
+                s.push(p->left->data);
+        }
+        if (p->right) {
+            q.push(p->right);
+            if (level%2 == 0)
+                printf(" %d", p->right->data);
+            else
+                s.push(p->right->data);
+        }
+        if (p == last) {
+            if (level%2) {
+                while (!s.empty()) {
+                    printf(" %d", s.top());
+                    s.pop();
+                }
+            }
+            level++;
+            last = q.back();
+        }
+    }
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%d", inorder+i);
+    for (i=0; i<N; i++)
+        scanf("%d", postorder+i);
+    tree = createBTree(0, N-1, N);
+    bfs();
+    printf("\n");
+}
+```
+
+
+## 1130 Infix Expression (25 分)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+struct Node {
+    string data;
+    int left, right;
+    Node(): left(-1), right(-1) {}
+};
+
+int N, gRoot;
+
+bool checked[21];
+
+char temp[20];
+
+Node t[21]; // 结点的地址从1开始。
+
+void inorderTraversal(int root) {
+    if (root == -1)
+        return;
+    if (root!=gRoot && !(t[root].left==-1 && t[root].right==-1)) printf("(");
+    inorderTraversal(t[root].left);
+    printf("%s", t[root].data.c_str());
+    inorderTraversal(t[root].right);
+    if (root!=gRoot && !(t[root].left==-1 && t[root].right==-1)) printf(")");
+}
+
+int main() {
+    int i, lchild, rchild;
+    scanf("%d", &N);
+    for (i=1; i<=N; i++) {
+        scanf("%s %d %d", temp, &lchild, &rchild);
+        t[i].data = temp;
+        if (lchild != -1) {
+            t[i].left = lchild;
+            checked[lchild] = true;
+        }
+        if (rchild != -1) {
+            t[i].right = rchild;
+            checked[rchild] = true;
+        }
+    }
+    for (i=1; i<=N && checked[i]; i++)
+        ;
+    gRoot = i; // 没有边指向结点i，故结点i就是根。
+    inorderTraversal(i); 
+}
+```
+
+
+## 1135 Is It A Red-Black Tree (30 分)
+
+1. 普通二叉树需要先序和中序或后序和中序序列才能唯一确定一棵二叉树。但对于二叉搜索树来说，只需要三个序列中的一个，再加上二叉搜索树本身的性质，即可唯一确定一棵二叉搜索树。
+2. 红黑树的定义：
+(1) Every node is either red or black.
+(2) The root is black.
+(3) Every leaf (NULL) is black.
+(4) If a node is red, then both its children are black.
+(5) For each node, all simple paths from the node to descendant leaves contain the same number of black nodes.
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int K, N;
+
+bool flag;
+
+int pre[30];
+
+struct Node {
+    int data;
+    Node* left;
+    Node* right;
+    Node(): left(nullptr), right(nullptr) {}
+    Node(int d): data(d), left(nullptr), right(nullptr) {}
+};
+
+// 参数start是一棵BST的先序序列的起始下标。
+Node* createBST(int start, int len) {
+    int i;
+    if (len <= 0)
+        return nullptr;
+    int root = pre[start];
+    for (i=start+1; i<start+len && abs(root)>abs(pre[i]); i++) // 记得比较时取绝对值。
+        ;
+    int rightStart = i;
+    int leftStart = start+1;
+    int leftLen = rightStart - leftStart;
+    int rightLen = len - 1 - leftLen;
+    Node* t = new Node(root);
+    t->left = createBST(leftStart, leftLen);
+    t->right = createBST(rightStart, rightLen);
+    return t;
+}
+
+void freeBST(Node* t) {
+    if (t) {
+        freeBST(t->left);
+        freeBST(t->right);
+        delete t;
+    }
+}
+
+Node* tree;
+
+int dfs(Node* root) {
+    if (root == nullptr)
+        return 1; // 返回黑色结点数，叶子是黑色的NULL结点。
+    int x=0, y=0;
+    if (root->left) {
+        if (root->data<0 && root->left->data<0) { // 红色结点的左右孩子都要是黑色结点。
+            flag = false;
+            return -1; // 让前面的递归调用尽快返回。
+        }
+        x = dfs(root->left);
+        if (x == -1)
+            return -1;
+    }
+    if (root->right) {
+        if (root->data<0 && root->right->data<0) {
+            flag = false;
+            return -1;
+        }
+        y = dfs(root->right);
+        if (y == -1)
+            return -1;
+    }
+    if (x != y) { // 一个结点到其底下的叶子结点的路径上的黑色结点数相等。
+        flag = false;
+        return -1;
+    }
+    if (root->data > 0)
+        return x+1; // 当前结点是黑色的，加一。
+    else
+        return x;
+}
+
+int main() {
+    int i;
+    scanf("%d", &K);
+    while (K--) {
+        scanf("%d", &N);
+        for (i=0; i<N; i++)
+            scanf("%d", pre+i);
+        flag = true;
+        if (pre[0] < 0) { // 根要求是黑色的。
+            flag = false;
+        } else {
+            tree = createBST(0, N);
+            dfs(tree);
+            freeBST(tree);
+        }
+        if (flag)
+            printf("Yes\n");
+        else
+            printf("No\n");
+    }
+}
+```
+
+
+## 1143 Lowest Common Ancestor (30 分)
+
+```cpp
+#include <iostream>
+#include <unordered_map>
+#include <vector>
+using namespace std;
+
+// 利用二叉搜索树的性质，根大于左子树，小于（等于）右子树。
+
+int main() {
+    int N, M, i, x, y, a;
+    scanf("%d %d", &M, &N);
+    vector<int> pre(N);
+    unordered_map<int, bool> book;
+    for (i=0; i<N; i++) {
+        scanf("%d", &pre[i]);
+        book[pre[i]] = true; // 为了快速检查输入的两个数是否在二叉搜索树中。
+    }
+    while (M--) {
+        scanf("%d %d", &x, &y);
+        // 遍历先序序列相当于对二叉搜索树进行先序遍历。我们不必先根据输入的先序序列在内存中建树，然后先序遍历这棵树。
+        for (i=0; i<N; i++) {
+            a = pre[i];
+            if ((x<a&&y>=a) || (x>=a&&y<a) || (x==a) || (y==a))
+                break;
+        }
+        // 快速检查输入的两个数是否在二叉搜索树中。
+        if (!book[x] && !book[y])
+            printf("ERROR: %d and %d are not found.\n", x, y);
+        else if (!book[x] || !book[y])
+            printf("ERROR: %d is not found.\n", book[x]? y: x);
+        else if (a==x || a==y)
+            printf("%d is an ancestor of %d.\n", a==x? x: y, a==x? y: x);
+        else
+            printf("LCA of %d and %d is %d.\n", x, y, a);
+    }
+}
+```
+
+
+## 1147 Heaps (30 分)
+
+1. 用数组存储完全二叉树，从1开始，否则2*i会失效。
+2. 从最后一个父结点是否满足堆的性质，然后递推到根。（而不是从根往下递推，这很复杂，注意换个思维，换个方向）
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <climits>
+using namespace std;
+
+int N, M;
+
+int cbt[1001];
+
+vector<int> postorder;
+
+void postorderTraversal(int root) {
+    if (root > N)
+        return;
+    postorderTraversal(root*2);
+    postorderTraversal(root*2+1);
+    postorder.push_back(cbt[root]);
+}
+
+bool isMaxHeap() {
+    // 从最后一个父结点是否满足堆的性质，然后递推到根。（而不是从根往下递推，这很复杂，注意换个思维，换个方向）
+    for (int i=N/2; i>=1; i--) {
+        if (i*2<=N && cbt[i*2]>cbt[i])
+            return false;
+        if (i*2+1<=N && cbt[i*2+1]>cbt[i])
+            return false;
+    }
+    return true;
+}
+
+bool isMinHeap() {
+    // 从最后一个父结点是否满足堆的性质，然后递推到根。
+    for (int i=N/2; i>=1; i--) {
+        if (i*2<=N && cbt[i*2]<cbt[i])
+            return false;
+        if (i*2+1<=N && cbt[i*2+1]<cbt[i])
+            return false;
+    }
+    return true;
+}
+
+int main() {
+    int i;
+    scanf("%d %d", &M, &N);
+    while (M--) {
+        for (i=1; i<=N; i++) // 完全二叉树从1开始存储。
+            scanf("%d", cbt+i);
+        postorder.clear();
+        if (isMaxHeap()) {
+            printf("Max Heap\n");
+        } else {
+            if (isMinHeap())
+                printf("Min Heap\n");
+            else
+                printf("Not Heap\n");
+        }
+        postorderTraversal(1);
+        printf("%d", postorder[0]);
+        for (i=1; i<N; i++)
+            printf(" %d", postorder[i]);
+        printf("\n");
+    }
+}
+```
+
+
+## 1151 LCA in a Binary Tree (30 分)
+
+1. 这个思路太强了。如果想不出来，那就用土办法，dfs得到从根到u和v的两条路径，找到两条路径中最后一个相同的结点。（可以用一个数组/map把第一个路径的结点作为key，然后逆序遍历第二条路径，第一个能够在数组/map中找到的结点就是最后一个公共结点了）
+2. 中序序列（左根右）的特点，根的左子树的结点的下标小于根，右子树的结点的下标大于根。由此，通过比较下标，可以很容易确定a是否是u和v的最近公共祖先。
+3. 题目还给出了先序序列（根左右），刚好，我们**遍历先序序列就相当于先序遍历树**，我们从根开始往下搜索，不满足时逐步缩小搜索范围。
+4. 还有一种就是在内存中建树，然后：
+
+```cpp
+node* lca(node* root,int x1,int x2){
+    if(root==NULL)return NULL;
+    if(root->data==x1 || root->data==x2) return root;
+    node* left = lca(root->left,x1,x2);
+    node* right = lca(root->right,x1,x2);
+    if(left && right) return root;
+    else if(left==NULL) return right;
+    else return left;
+}
+```
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+using namespace std;
+
+unordered_map<int, int> idxInInorder;
+
+int main() {
+    int u, v, M, N, i, idxu, idxv, idxa;
+    bool flag1, flag2;
+    scanf("%d %d", &M, &N);
+    vector<int> pre(N);
+    for (i=0; i<N; i++) {
+        scanf("%d", &u);
+        idxInInorder[u] = i;
+    }
+    for (i=0; i<N; i++)
+        scanf("%d", &pre[i]);
+    while (M--) {
+        scanf("%d %d", &u, &v);
+        flag1 = flag2 = false;
+        if (idxInInorder.find(u) == idxInInorder.end())
+            flag1 = true;
+        if (idxInInorder.find(v) == idxInInorder.end())
+            flag2 = true;
+        if (flag1 || flag2) {
+            if (flag1 && flag2)
+                printf("ERROR: %d and %d are not found.\n", u, v);
+            else if (flag1)
+                printf("ERROR: %d is not found.\n", u);
+            else
+                printf("ERROR: %d is not found.\n", v);
+            continue;
+        }
+        idxu = idxInInorder[u];
+        idxv = idxInInorder[v];
+        for (i=0; i<N; i++) {
+            idxa = idxInInorder[pre[i]];
+            if ((idxu<idxa&&idxv>idxa) || (idxu>idxa&&idxv<idxa)) {
+                printf("LCA of %d and %d is %d.\n", u, v, pre[i]);
+                break;
+            } else if (idxu == idxa) {
+                printf("%d is an ancestor of %d.\n", u, v);
+                break;
+            } else if (idxv == idxa) {
+                printf("%d is an ancestor of %d.\n", v, u);
+                break;
+            }
+        }
+    }
+}
+```

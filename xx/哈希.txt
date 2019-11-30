@@ -1,0 +1,136 @@
+## 1078 Hashing (25 分)
+
+1. 解决冲突的方式，Quadratic probing，二次退避，且题目说了，with positive increments only。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <cmath>
+using namespace std;
+
+int M, N;
+
+bool isPrime(int x) {
+    if (x <= 1)
+        return false;
+    int sr = sqrt(x);
+    for (int i=2; i<=sr; i++) {
+        if (x%i == 0)
+            return false;
+    }
+    return true;
+}
+
+int hash_(int x) {
+    return x%M;
+}
+
+int main() {
+    int i, x, h;
+    bool flag;
+    scanf("%d %d", &M, &N);
+    // Note that the table size is better to be prime.
+    // If the maximum size given by the user is not prime,
+    // you must re-define the table size to be the smallest prime number
+    // which is larger than the size given by the user.
+    while (!isPrime(M))
+        M++;
+    vector<int> v(M, 0);
+    while (N--) {
+        scanf("%d", &x);
+        flag = false;
+        h = hash_(x);
+        for (i=0; i<=M; i++) {
+            if (v[(h+i*i)%M] == 0) {
+                v[(h+i*i)%M] = x;
+                printf("%d", (h+i*i)%M);
+                flag = true;
+                break;
+            }
+        }
+        if (!flag)
+            printf("-");
+        if (N != 0)
+            printf(" ");
+    }
+    printf("\n");
+}
+```
+
+
+## 1145 Hashing - Average Search Time (25 分)
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <cmath>
+using namespace std;
+
+int Msize;
+
+vector<int> table;
+
+int hash_(int key) {
+    return key%Msize;
+}
+
+bool insert(int key) {
+    int h = hash_(key);
+    int i;
+    bool flag = false;
+    // for (i=0; i*i<Msize; i++) {
+    for (i=0; i<=Msize; i++) {
+        if (table[(h+i*i)%Msize] == -1) {
+            table[(h+i*i)%Msize] = key;
+            flag = true;
+            break;
+        }
+    }
+    return flag;
+}
+
+int cnt;
+
+void find(int key) {
+    int h = hash_(key);
+    // for (int i=0; i*i<Msize; i++) {
+    for (int i=0; i<=Msize; i++) { // 虽然i==Msize时继续循环是没有意义的，因为(i*i)%Msize==0，但不这么写，就过不了测试。
+        cnt++;
+        if (table[(h+i*i)%Msize]==key || table[(h+i*i)%Msize]==-1)
+            break;
+    }
+}
+
+bool isPrime(int x) {
+    int sq = sqrt(x);
+    for (int i=2; i<=sq; i++)
+        if (x%i == 0)
+            return false;
+    return true;
+}
+
+int main() {
+    int N, M, x, i;
+    bool success;
+    scanf("%d %d %d", &Msize, &N, &M);
+    // Note that the table size is better to be prime. If the maximum size given by the user is not prime,
+    // you must re-define the table size to be the smallest prime number which is larger than the size given by the user.
+    // 记得要把Msize调整为最近的质数。
+    while (!isPrime(Msize))
+        Msize++;
+    table.resize(Msize);
+    fill(table.begin(), table.end(), -1);
+    while (N--) {
+        scanf("%d", &x);
+        success = insert(x);
+        if (!success)
+            printf("%d cannot be inserted.\n", x);
+    }
+    for (i=0; i<M; i++) {
+        scanf("%d", &x);
+        find(x);
+    }
+    printf("%.1f\n", cnt*1.0/M);
+}
+```

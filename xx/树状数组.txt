@@ -1,0 +1,81 @@
+## 1057 Stack (30 分)
+
+1. 树状数组的组件有，getSum(i)返回区间[1, i]的和，O(logN)，update(i, v)为a[i]加v，O(logN)。
+2. 可以将树状数组c认为是前缀和数组s的高级版，其中，s[i]管理a[0, i]的和，而c[i]只管理a[i-lowbit(i), i]的和。
+3. 注意数组数组下标必须从1开始。
+4. lowbit(i)=i&(-i)，计算机用补码存储有符号数，-i等价于`~i+1`（补码定义），也就是保留了i最右边的1和该1右边的0，也就是返回2^k，其中k是最右边的1的右边的0的个数。可以把lowbit(i)认为是可整除i的最大的2的幂次。
+5. 参考：http://www.cppblog.com/menjitianya/archive/2015/11/02/212171.html和算法笔记。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <stack>
+using namespace std;
+
+int N;
+
+const int maxn = 100002; // 注意最大容量要写对，不要写少了零。
+
+int c[maxn];
+
+int lowbit(int i) {
+    return i&(-i);
+}
+
+int sum(int i) {
+    int sum = 0;
+    for (; i>0; i-=lowbit(i)) { // 不能等于0，树状数组下标从1开始。
+        sum += c[i];
+    }
+    return sum;
+}
+
+void add(int i, int v) {
+    for (; i<maxn; i+=lowbit(i))
+        c[i] += v; // 管理的区域包含a[i]的树状数组元素c[j]必须加上多出来的v，才能正确反映其管理的区域的和。
+}
+
+stack<int> s;
+
+// 当查找中位数时，如果没有树状数组，那么就需要从左往右遍历数组，求和，当和为`(s.size()+1)/2`时，当前遍历到的下标就是栈中元素的中位数。
+// 有了树状数组的组织方式，只是让我们可以进行二分查找，将查找中位数的时间复杂度从O(N)降低到O(logN * logN)。
+void peekMedian() {
+    int left=1, right=maxn, mid, k=(s.size()+1)/2;
+    while (left < right) {
+        mid = (left+right)/2;
+        if (sum(mid)>=k)
+            right = mid; // 暂存结果，然后缩小范围继续找。
+        else
+            left = mid+1;
+    }
+    printf("%d\n", right);
+}
+
+
+int main() {
+    int i, x;
+    char cmd[21];
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%s", cmd);
+        if (cmd[1] == 'u') {
+            scanf("%d", &x);
+            s.push(x);
+            add(x, 1); // 将数字x添加到树状数组中。
+        } else if (cmd[1] == 'o') {
+            if (s.empty()) {
+                printf("Invalid\n");
+            } else {
+                add(s.top(), -1); // 将数组`s.top()`从树状数组中删除。
+                printf("%d\n", s.top());
+                s.pop();
+            }
+        } else {
+            if (s.empty())
+                printf("Invalid\n");
+            else
+                peekMedian();
+        }
+    }
+}
+```

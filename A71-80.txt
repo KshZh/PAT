@@ -1,0 +1,811 @@
+## 1071 Speech Patterns (25 分)
+
+1. <cctype>，isalnum, tolower。
+2. 如果不存在就会创建pair，而std::pair会对int进行值初始化，为0，而不是未定义的值，所以可以直接这么做。
+
+```cpp
+#include <string>
+#include <iostream>
+#include <cctype>
+#include <map>
+using namespace std;
+
+string line, s;
+
+map<string, int> count;
+
+int max_;
+
+int main() {
+    getline(cin, line);
+    for (char c: line) {
+        if (isalnum(c)) {
+            s += tolower(c); // 大小写不敏感，统一转换为小写。
+        } else if (!s.empty()) {
+            count[s]++; // 如果不存在就会创建pair，而std::pair会对int进行值初始化，为0，而不是未定义的值，所以可以直接这么做。
+            s.clear();
+        }
+    }
+    if (!s.empty()) // 不以"结尾或"后面还有单词……
+        count[s]++;
+    // std::map是有序容器，这里它会自动按string的字典序递增组织pair。
+    for (const auto& p: count) {
+        if (p.second > max_) { // 配合这里用>而不是>=，就可以确保有多个可能结果时，选择字典序最小的那一个。
+            max_ = p.second;
+            s = p.first;
+        }
+    }
+    cout << s << ' ' << max_ << endl;
+}
+```
+
+
+## 1072 Gas Station (30 分)
+
+1. 最短路径，dijkstra。
+2. 注意仔细读题：A gas station **has to be built at** such a location **that the minimum distance between the station and any of the residential housing is as far away as possible**. However it must guarantee that all the houses are in its service range. 也就是可能有多个候选地点，一个合格的地点首先要保证其到所有房子的最短路径在其服务范围内，然后若有多个合格的地点，则取其中（其中指多个合格的地点）地点到所有房子的最短路径最小的那条路径长度在多个合格地点中最大的地点。
+3. 当要将数字转换为字符串时，如果不是单纯地23->"23"，而是由更多的格式要求，善用printf，sprintf等，而不是我们手动做字符串拼接。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+const int inf = 0x7fffffff;
+
+int nHouses, nCancidates, K, maxServiceRange, i, j, k, x, minDis, bestMinDis, totalDis, bestTotalDis, bestLocation, min_;
+
+bool flag;
+
+string a, b;
+
+// 无向图。
+// 房子最多有1000个，候选地点最多有10个，房子从1开始编号，候选地点则从nHouses+1开始编号。
+int roads[1011][1011];
+
+bool visited[1011];
+int dis[1011]; // dis[i]表示v0->vi的最短路径长度。
+
+void dijkstra(int v0) {
+    int i, v; // 注意这里用了局部变量i，避免修改了全局变量i。
+    dis[v0] = 0;
+    while (true) {
+        min_ = inf;
+        v = -1;
+        for (i=1; i<=nHouses+nCancidates; i++) {
+            if (!visited[i] && dis[i]<min_) {
+                min_ = dis[i];
+                v = i;
+            }
+        }
+        if (v == -1) // 所有house结点都遍历过了。
+            break;
+        visited[v] = true; // 将该结点并入已确定最短路径的集合S中。（未确定最短路径的结点集合是V-S）
+        // 考察通过v中继，v0->vi是否有更短的路径。
+        for (i=1; i<=nHouses+nCancidates; i++) {
+            if (!visited[i] && roads[v][i]!=0 && dis[v]+roads[v][i]<dis[i]) {
+                dis[i] = dis[v]+roads[v][i];
+            }
+        }
+    }
+}
+
+int main() {
+    scanf("%d %d %d %d", &nHouses, &nCancidates, &K, &maxServiceRange);
+    for (i=0; i<K; i++) {
+        cin >> a >> b >> x;
+        if (a[0] == 'G') {
+            j = stoi(a.substr(1));
+            j += nHouses;
+        } else {
+            j = stoi(a);
+        }
+        if (b[0] == 'G') {
+            k = stoi(b.substr(1));
+            k += nHouses;
+        } else {
+            k = stoi(b);
+        }
+        // 无向图。
+        roads[j][k] = x;
+        roads[k][j] = x;
+    }
+    bestTotalDis = inf; // 初始化。
+    for (i=nHouses+1; i<=nHouses+nCancidates; i++) {
+        // 使用dijkstra算法的必要的初始化。
+        for (j=1; j<=nHouses+nCancidates; j++) {
+            dis[j] = inf;
+            visited[j] = false;
+        }
+        dijkstra(i); // 考察候选地点i到其它house的最短路径。（虽然顺带计算除了候选地点到其它候选地点的最短路径）
+        totalDis = 0.0;
+        minDis = inf;
+        flag = true;
+        // 考察这些最短路径不超过该候选地点的服务范围。
+        // 注意这里只考察房子到该候选地点的最短路径，不考虑其它候选地点到该候选地点的最短路径。
+        for (j=1; j<=nHouses; j++) {
+            if (dis[j] > maxServiceRange) {
+                flag = false;
+                break;
+            }
+            totalDis += dis[j];
+            if (dis[j] < minDis)
+                minDis = dis[j];
+        }
+        if (flag) {
+			// 注意这个条件，读题！
+            if (minDis > bestMinDis || (minDis==bestMinDis && totalDis < bestTotalDis)) {
+                bestLocation = i;
+                bestTotalDis = totalDis;
+                bestMinDis = minDis;
+            }
+        }
+    }
+    if (bestLocation == 0)
+        printf("No Solution\n");
+    else
+        printf("G%d\n%.1f %.1f\n", bestLocation-nHouses, (float)bestMinDis, bestTotalDis*1.0/nHouses);
+}
+```
+
+
+## 1073 Scientific Notation (20 分)
+
+1. [+-][1-9].[0-9]+E[+-][0-9]+
+2. 小数点左边的那一位不一定就是1，可以是[1-9]。
+3. substr()第二个参数是count而不是end。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+const int mantissaBegin = 3;
+
+string input, output;
+
+int sign, posE, posExponent, exponent, i, mantissaLen;
+
+bool leftShift;
+
+// +1.23400E-03
+// 0.00123400
+// -1.2E+10
+// -12000000000
+//
+// +1.23E+3 1230
+// +3表示要在小数点后补3个零，但23已经占了两位，所以只需要补一个零。
+// -1.34E-3
+// -3表示要在小数点前补3个零，而1已经占了一位，所以只需再补两个零。
+
+int main() {
+    cin >> input;
+    sign = input[0]=='+'? 1: -1;
+    posE = input.find('E');
+    leftShift = input[posE+1]=='-'? true: false;
+    posExponent = input.find_first_not_of('0', posE+2);
+    exponent = stoi(input.substr(posExponent));
+    if (leftShift) {
+        output = "0.";
+        for (i=0; i<exponent-1; i++)
+            output += '0';
+        // output = "1";
+        // 注意，小数点左边的那一位不一定就是1，可以是[1-9]。
+        output += input[1];
+        // output += input.substr(mantissaBegin, posE);
+        // 注意substr()第二个参数是count而不是end。
+        output += input.substr(mantissaBegin, posE-mantissaBegin);
+    } else {
+        output = input[1];
+        // 判断尾数长度，如果比指数大，则不必额外补0。
+        // 而且如果尾数长度比指数大，还要给尾数添加小数点。
+        mantissaLen = posE - mantissaBegin; // 求区间长度，半开半闭区间。
+        if (mantissaLen <= exponent) {
+            output += input.substr(mantissaBegin, posE-mantissaBegin);
+            // 补零。
+            for (i=0; i<exponent-mantissaLen; i++)
+                output += '0';
+        } else {
+            // 不需要补零，还要在尾数适当的部分插入小数点。
+            output += input.substr(mantissaBegin, exponent);
+            output += '.';
+            output += input.substr(mantissaBegin+exponent, posE-(mantissaBegin+exponent));
+        }
+    }
+    if (sign == -1)
+        cout << "-" + output << endl;
+    else
+        cout << output << endl;
+}
+```
+
+
+## 1074 Reversing Linked List (25 分)
+
+1. 注意有多余结点不在链表上这种情况。
+2. 注意，For example, given L being 1→2→3→4→5→6, if K=3, then you must output 3→2→1→6→5→4; if K=4, you must output 4→3→2→1→5→6. 并不是K=3，然后结果是 3→2→1→4→5→6。
+3. 一开始审题不清，总以为是后面的情况，下面的代码对后面的情况是可以工作的，但无法应对题目的要求。
+4. 参考http://lulalap.com/2018/11/28/PAT-A1074-cpp/，**链表不一定要用链式存储，也可以线性存储，特别是对于题目给出每个结点的地址的情况**。
+5. std::reverse。
+6. 因为我们连续存储结点，而**next指针的值就是下一个结点的地址**嘛。
+
+```cpp
+#include <iostream>
+#include <map>
+#include <algorithm>
+using namespace std;
+
+int N, K, i, n, head, addr, key, next_;
+
+// XXX 因为我们连续存储结点，而next指针的值就是下一个结点的地址嘛。
+
+map<int, pair<int, int>> nodes;
+int list[100001];
+
+int main() {
+    scanf("%d %d %d", &head, &N, &K);
+    for (i=0; i<N; i++) {
+        scanf("%d %d %d", &addr, &key, &next_);
+        nodes[addr] = pair<int, int>(key, next_);
+    }
+	// 把链表中各个结点的地址顺序存储在一个数组中，然后对数组每K段进行反转，而next指针的值就是下一个结点的地址嘛。
+	// 这样我们在反转的时候就不必修改next指针了！
+    for (n=0; head!=-1; n++) {
+        list[n] = head;
+        head = nodes[head].second;
+    }
+    for (i=0; i+K<=n; i+=K) { // 反转n/k段。注意这里要判断`i+K<=n`，避免循环中的`list+i+K`“越界”了。
+        reverse(list+i, list+i+K);
+    }
+    for (i=0; i<n-1; i++) {
+        printf("%05d %d %05d\n", list[i], nodes[list[i]].first, list[i+1]);
+    }
+    printf("%05d %d -1\n", list[i], nodes[list[i]].first);
+}
+```
+
+
+## 1075 PAT Judge (25 分)
+
+1. 注意，The ranklist must be printed in non-decreasing order of the ranks. For those who have the same rank, users must be sorted in nonincreasing order **according to the number of perfectly solved problems**. 是得满分的问题的数量，而不是得满分的问题的ID！区别 the number of 和 the id of。
+2. 没提交过的和提交没过编译的统统放后面去。这一步是必要的，因为提交但没过编译的和提交过编译的0分的，两者的totalScore都是0，也就是它们会按照userID排序，那么若没有这一步，后面打印rank时，用`if (a[i].show == 0) continue;`就会出错，比如1007是前者，1009是后者，由于循环变量i改变了，那么rank就会出现断层！**或者i只做循环变量，再用另一个变量做计数器**。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+struct Node {
+    int id;
+    int scores[6]; // problem id从1开始。
+    int totalScore;
+    int nPerfectlySolvedProblems;
+    int show; // 没提交过或提交了但都没过编译的不打印，但提交了过编译得零分的要打印。
+    Node() {
+        for (int i=0; i<6; i++)
+            scores[i] = -1;
+    }
+};
+
+// 用户ID从1开始。
+// 全局变量，没被ctor初始化的字段默认初始化为0。
+Node a[10001];
+
+int fullScores[6];
+
+int i, j, N, K, M, userID, problemID, score, rank_;
+
+bool cmp(const Node& a, const Node& b) {
+    if (a.show != b.show) return a.show > b.show; // XXX 没提交过的和提交没过编译的统统放后面去。这一步是必要的，
+    if (a.totalScore != b.totalScore) return a.totalScore > b.totalScore;
+    if (a.nPerfectlySolvedProblems != b.nPerfectlySolvedProblems) return a.nPerfectlySolvedProblems > b.nPerfectlySolvedProblems;
+    return a.id < b.id;
+}
+
+int main() {
+    scanf("%d %d %d", &N, &K, &M);
+    for (i=1; i<=K; i++)
+        scanf("%d", fullScores+i);
+    for (i=0; i<M; i++) { // M条提交记录。
+        scanf("%d %d %d", &userID, &problemID, &score);
+        a[userID].id = userID;
+        if (score == -1) { // 提交了但没过编译。
+            if (a[userID].scores[problemID] == -1)
+                a[userID].scores[problemID] = 0; // 标记一下，提交了但没过编译的成绩是0。
+            continue;
+        }
+        // 提交了且过编译。
+        if (a[userID].scores[problemID]==-1 || a[userID].scores[problemID]<score) {// 短路操作，当判断第二个条件时，隐含地第一个条件不满足，即`a[userID].score[problemID]!=-1`。
+            // 第二个条件表示同一个用户对同一个问题的多次提交中，取得分最高的那次提交。
+            if (a[userID].scores[problemID] != -1)
+                a[userID].totalScore -= a[userID].scores[problemID];
+            a[userID].totalScore += score;
+            a[userID].scores[problemID] = score;
+            if (score == fullScores[problemID])
+                a[userID].nPerfectlySolvedProblems++;
+            a[userID].show = 1;
+            
+        }
+    }
+    // 也可以放到外面计算总分。
+    /*
+    for (i=1; i<=N; i++) {
+        for (j=1; j<=K; j++) {
+            if (a[i].scores[j] == -1) continue;
+            a[i].totalScore += a[i].scores[j];
+            if (a[i].scores[j] == fullScores[j]) a[i].nPerfectlySolvedProblems++;
+        }
+    }
+    */
+    sort(a+1, a+1+N, cmp);
+	a[0].totalScore = a[1].totalScore;
+    for (rank_=i=1; i<=N; i++) {
+        /*
+        // 这个判断是错误的，提交了过了编译但得0分的要打印。
+        if (a[i].totalScore == 0)
+            break;
+        */
+        if (a[i].show == 0)
+            break;
+        if (a[i].totalScore != a[i-1].totalScore) rank_=i;
+        printf("%d %05d %d", rank_, a[i].id, a[i].totalScore);
+        for (j=1; j<=K; j++) {
+            if (a[i].scores[j] == -1)
+                printf(" -");
+            else
+                printf(" %d", a[i].scores[j]);
+        }
+        printf("\n");
+    }
+}
+```
+
+
+## 1076 Forwards on Weibo (30 分)
+
+1. 图的遍历，第一次用了dfs，但因为无法应对环路，会衍生出很多无意义、重复的递归分支，导致最后一个测试会运行超时。
+2. 这一题其实应该用bfs，一方面没有递归调用的开销，另一方面可以进行适当的剪枝，而且bfs也更符合这一题的逻辑，**转发微博是一层一层往外传播的**。
+3. 递归并不是并行执行的，而是串行执行的。
+4. 注意，bfs时，在结点入队时更新相关数据，和在结点出队时才更新相关数据的区别。
+
+```cpp
+#include <iostream>
+#include <set>
+#include <queue>
+using namespace std;
+
+// 边权，用户ID从1开始。
+bool e[1001][1001];
+
+int N, L, M, K, i, j, k, id, amount;
+
+set<int> s;
+
+bool visited[1001];
+
+// 树形递归，虽然并不是多个递归调用同时进行，但最终递归路径的形状是树形的。
+void dfs(int v, int level) {
+    // if (visited[v])
+    //    return;
+
+    if (level > L)
+        return;
+
+    int i; // 局部变量，避免与全局变量混用。
+    for (i=1; i<=N; i++) {
+        if (i == v)
+            continue;
+        if (e[v][i]) {
+            dfs(i, level+1);
+            // 无用，因为**递归并不是并行执行的，而是串行执行的**，只有在上面的dfs()调用返回后，才会执行这条语句。
+            // 这就无法处理环路的情况，还是会出现很多无意义的递归调用，多出很多无意义的递归分支。
+            // visited[i] = true;
+            // amount++; // 不能用计数器，因为无法判断当前结点是否已经转发过了。
+            s.insert(i);
+        }
+    }
+}
+
+int main() {
+    scanf("%d %d", &N, &L);
+    for (i=1; i<=N; i++) {
+        scanf("%d", &M);
+        for (j=0; j<M; j++) {
+            scanf("%d", &k);
+            // 用户i关注用户k，故用户i可以看到用户k发的post，但用户k看不到用户i发的post，
+            // 也就是从用户k到用户i有一条边，即用户k发的post可以传递给用户i看见，而不是反过来。
+            e[k][i] = true;
+        }
+    }
+    scanf("%d", &K);
+    for (i=0; i<K; i++) {
+        scanf("%d", &id);
+        dfs(id, 1);
+        s.erase(id); // 可能存在环，将当前查询的结点排除。
+        printf("%d\n", s.size());
+        s.clear();
+    }
+}
+```
+
+```cpp
+#include <iostream>
+#include <set>
+#include <queue>
+using namespace std;
+
+// 边权，用户ID从1开始。
+bool e[1001][1001];
+
+int N, L, M, K, i, j, k, id, amount;
+
+set<int> s;
+
+bool visited[1001];
+
+void bfs(int v) {
+    queue<int> q;
+    int level = 1, x;
+    q.push(v);
+    visited[v] = true;
+    q.push(-1);
+    while (!q.empty() && level<=L) {
+        x = q.front();
+        q.pop();
+        if (x == -1) {
+            level++;
+            q.push(-1); // 下一层的结点已经都在队列中的，推入一个结束标志。
+            continue;
+        }
+        // 注意，visited[i]要在入队的时候更新，而不是出队的时候更新，
+        // 区别在于，如果是后者，考虑level 1已有两个结点在队中，pop()出第一个结点，推入了其指向的结点z，
+        // 然后pop()第二个结点，同样推入了其指向的结点z，这样无法达到剪枝的效果。
+        // 而且更严重的是会重复递增amount。
+        // visited[x] = true;
+        for (int i=1; i<=N; i++) {
+            if (!visited[i] && e[x][i]) {
+                amount++;
+                q.push(i);
+                visited[i] = true;
+            }
+        }
+    }
+}
+
+int main() {
+    scanf("%d %d", &N, &L);
+    for (i=1; i<=N; i++) {
+        scanf("%d", &M);
+        for (j=0; j<M; j++) {
+            scanf("%d", &k);
+            // 用户i关注用户k，故用户i可以看到用户k发的post，但用户k看不到用户i发的post，
+            // 也就是从用户k到用户i有一条边，即用户k发的post可以传递给用户i看见，而不是反过来。
+            e[k][i] = true;
+        }
+    }
+    scanf("%d", &K);
+    for (i=0; i<K; i++) {
+        scanf("%d", &id);
+        bfs(id);
+        printf("%d\n", amount);
+        amount = 0;
+        for (j=1; j<=N; j++)
+            visited[j] = false;
+    }
+}
+```
+
+
+## 1077 Kuchiguse (20 分)
+
+1. 看准，case sensitive是大小写敏感，而不是不敏感。
+2. <cctype>, tolower(char), <algorithm>, transform()。
+3. 注意处理line的长度比之前的line的公共后缀还要短的情况。
+4. 注意吸收掉换行符，可以用`scanf("%d\n")`，或者`cin>>N; getchar();`。
+5. 可能要跳过前导空格，不过这一题不用。
+6. 可以优化，但没必要。
+
+```cpp
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <cctype>
+using namespace std;
+
+int N, i, j, k, x;
+
+string line, s;
+
+int main() {
+    // cin >> N;
+    scanf("%d\n", &N);
+    getline(cin, line);
+    // transform(line.begin(), line.end(), line.begin(), [](auto c){ return tolower(c); });
+    s = line;
+    for (i=1; i<N; i++) {
+        getline(cin, line);
+        // transform(line.begin(), line.end(), line.begin(), [](auto c){ return tolower(c); });
+        for (k=s.size()-1, j=line.size()-1; j>=0 && k>=0; j--, k--) {
+            if (line[j] != s[k]) {
+                s = s.substr(k+1);
+				// x = k+1; // 可以优化，但没必要。
+                break;
+            }
+        }
+        // line的长度比之前的line的公共后缀还要短的情况。
+        if (j<0 && k>=0)
+            s = s.substr(k+1);
+			// x = k+1;
+    }
+	// // s = s.substr(x);
+    // // 跳过前导空格。
+    // for (i=0; i<s.size() && s[i]==' '; i++)
+    //     ;
+    // s = s.substr(i);
+    if (s.empty())
+        cout << "nai" << endl;
+    else
+        cout << s << endl;
+}
+```
+
+
+## 1078 Hashing (25 分)
+
+1. 解决冲突，二次探测，i+1^2, i+2^2, i+3^2, ...
+2. isPrime()，<是错误的，要<=。
+
+```cpp
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+int table[10000];
+int a[10000];
+
+int i, M, N, x;
+
+bool isPrime(int x) {
+    if (x <= 1) return false;
+    int u = sqrt((double)x);
+    for (int i=2; i<=u; i++) { // `<=`，小于号是错误的。
+        if (x%i == 0)
+            return false;
+    }
+    return true;
+}
+
+int getMinPrime(int x) {
+    while (!isPrime(x))
+        x++;
+    return x;
+}
+
+int hash_(int key) {
+    return key%M;
+}
+
+// void insert(int key) {
+int insert(int key) { // 直接返回插入的下标即可，若没法插入，返回-1。
+    int h = hash_(key);
+    int i, j;
+    if (table[h] != 0) {
+        for (i=1; i<M; i++) {
+            if (table[hash_(h+i*i)] == 0) {
+                table[hash_(h+i*i)] = key;
+                // break;
+                return hash_(h+i*i);
+            }
+            // if (table[hash_(h-i*i)] == 0) {
+            //     table[hash_(h-i*i)] = key;
+            //     // break;
+            //     return hash_(h-i*i);
+            // }
+        }
+        return -1;
+    } else {
+        table[h] = key;
+        return h;
+    }
+}
+
+int search(int key) {
+    int h = hash_(key);
+    int i, j;
+    if (table[h] != key) {
+        for (i=1; i<M; i++) {
+            if (table[hash_(h+i*i)] == key)
+                return hash_(h+i*i);
+            if (table[hash_(h-i*i)] == key)
+                return hash_(h-i*i);
+        }
+        return -1; // not found.
+    } else {
+        return h;
+    }
+}
+
+int main() {
+    scanf("%d %d", &M, &N);
+    M = getMinPrime(M);
+    for (i=0; i<N; i++) {
+        scanf("%d", a+i); // 因为只在当前循环中使用，所以可以不用存储全部输入。不过刷题的时候要不要优化无所谓。
+        if ((x=insert(a[i])) == -1) {
+            if (i == 0) printf("-");
+            else printf(" -");
+        } else {
+            if (i == 0) printf("%d", x);
+            else printf(" %d", x);
+        }
+    }
+    /*
+    if ((x=search(a[0])) == -1)
+        printf("-");
+    else
+        printf("%d", x);
+    for (i=1; i<N; i++) {
+        if ((x=search(a[i])) == -1)
+            printf(" -");
+        else
+            printf(" %d", x);
+    }
+    */
+}
+```
+
+
+## 1079 Total Sales of Supply Chain (25 分)
+
+1. 注意处理bfs中的死循环。
+2. 仔细读题，如果提交后答案错误，除了检查代码，还要多读几遍题目。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <queue>
+using namespace std;
+
+vector<vector<int>> graph;
+
+int N, n, i, j;
+
+double P, r, total;
+
+// 适合用bfs，因为每一层的销售单价是一样的，且一层一层往外扩散。
+// It is assumed that each member in the supply chain has exactly one supplier except the root supplier, and there is no supply cycle.
+// **所以这里不需要记住已经入队过的结点**。
+void bfs(int v) {
+    int x;
+    queue<int> q;
+    q.push(v);
+    q.push(-1);
+    while (!q.empty()) {
+        x = q.front();
+        q.pop();
+        if (x == -1) {
+            P *= (1+r); // 计算出下一层的销售单价。
+            // 注意如果没有下面的判断，这里会有一个死循环，即不断地pop(-1)再push(-1)，而q.empty()永远为假。
+            if (q.empty())
+                break;
+            q.push(-1);
+            continue;
+        }
+        if (graph[x][0] == -1) {
+            // 零售商。
+            total += P*graph[x][1];
+            continue;
+        }
+        for (int e: graph[x]) {
+            q.push(e);
+        }
+    }
+}
+
+int main() {
+    scanf("%d %lf %lf", &N, &P, &r);
+    r = r/100; // 注意r是百分数，将其转换为小数。
+    graph.resize(N);
+    for (i=0; i<N; i++) { // their ID's are numbered from 0 to N−1.
+        scanf("%d", &n);
+        if (n == 0) {
+            // 零售商。
+            graph[i].resize(2);
+            graph[i][0] = -1; // flag.
+            scanf("%d", &graph[i][1]);
+        }
+        graph[i].resize(n);
+        for (j=0; j<n; j++)
+            scanf("%d", &graph[i][j]);
+    }
+    // the root supplier's ID is 0.
+    bfs(0);
+    printf("%.1lf", total);
+}
+```
+
+
+## 1080 Graduate Admission (30 分)
+
+1. 多读几遍题。
+2. 注意一下输出格式是否正确。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+struct Applicant {
+    int id; // 因为排序会使得Applicant在数组中的位置变化，所以要不能一直将下标作为id，要存储id。
+    int GE, GI;
+    double avg; // 缓存一下，避免排序时重复计算。
+    int preferred[5];
+};
+
+int N, M, K, i, j, school, lastAdmitedSchool;
+
+bool sameRank;
+
+vector<vector<int>> result; // 录取结果。
+vector<int> quotas;
+vector<Applicant> applicants;
+
+bool cmp(const Applicant& a, const Applicant& b) {
+    if (a.avg != b.avg) return a.avg > b.avg;
+    // if (a.GE != b.GE)
+    return a.GE > b.GE;
+}
+
+int main() {
+    scanf("%d %d %d", &N, &M, &K);
+    result.resize(M);
+    quotas.resize(M);
+    applicants.resize(N);
+    for (i=0; i<M; i++)
+        scanf("%d", &quotas[i]);
+    for (i=0; i<N; i++) {
+        scanf("%d %d", &applicants[i].GE, &applicants[i].GI);
+        applicants[i].avg = double((applicants[i].GE+applicants[i].GI))/2;
+        for (j=0; j<K; j++)
+            scanf("%d", &applicants[i].preferred[j]);
+        applicants[i].id = i;
+    }
+    sort(applicants.begin(), applicants.end(), cmp);
+    for (j=0; j<K; j++) {
+        school = applicants[0].preferred[j];
+        if (quotas[school] > 0) {
+            result[school].push_back(applicants[0].id);
+            quotas[school]--;
+            lastAdmitedSchool = school;
+            break;
+        }
+    }
+    // 如果某人申请的学校都满了，他也就会被拒。
+    for (i=1; i<N; i++) {
+        if (applicants[i].avg==applicants[i-1].avg && applicants[i].GE==applicants[i-1].GE)
+            sameRank = true;
+        for (j=0; j<K; j++) {
+            school = applicants[i].preferred[j];
+            if (quotas[school]>0 || (sameRank && lastAdmitedSchool==school)) {
+                result[school].push_back(applicants[i].id);
+                quotas[school]--;
+                lastAdmitedSchool = school;
+                break;
+            }
+        }
+        sameRank = false;
+    }
+    for (i=0; i<M; i++) {
+        if (result[i].empty()) {
+            // printf("\n");
+        } else {
+            sort(result[i].begin(), result[i].end());
+            printf("%d", result[i][0]);
+            for (j=1; j<result[i].size(); j++)
+                printf(" %d", result[i][j]);
+        }
+        printf("\n");
+    }
+}
+```
+

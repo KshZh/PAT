@@ -1,0 +1,668 @@
+## 1121 Damn Single (25 分)
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int N, M, i, id, cnt;
+
+bool a[100000];
+
+vector<pair<int, int>> couples;
+
+int main() {
+    scanf("%d", &N);
+    couples.resize(N);
+    for (i=0; i<N; i++)
+        scanf("%d %d", &couples[i].first, &couples[i].second);
+    scanf("%d", &M);
+    for (i=0; i<M; i++) {
+        scanf("%d", &id);
+        a[id] = true; // 以id作为键/下标。
+    }
+    // 去掉客人中结对出现的。
+    cnt = M;
+    for (i=0; i<N; i++) {
+        if (a[couples[i].first] && a[couples[i].second]) {
+            a[couples[i].first] = a[couples[i].second] = false;
+            cnt -= 2;
+        }
+    }
+    printf("%d\n", cnt);
+    bool flag = true;
+    for (i=0; i<100000; i++) { // 这里如果要优化还可以设置一个计数器，提前退出循环。
+        if (a[i]) {
+            if (flag) {
+                printf("%05d", i);
+                flag = false;
+            } else {
+                printf(" %05d", i);
+            }
+        }
+    }
+    // 如果cnt为0，再换行就会格式错误。所以干脆不再换行。
+    // printf("\n");
+}
+```
+
+
+## 1122 Hamiltonian Cycle (25 分)
+
+1. 这道题的一个坑点在于，结点数最多200个，但输入的汉密尔顿回路的结点个数，若是合法的回路，则结点数至少为201，不合法的则可能更多，如果用201的数组存储，可能越界，一些数据存储不了。
+2. 不知道问什么，本应该越界crash，测试却报出结果错误。
+
+```cpp
+#include <iostream>
+#include <unordered_set>
+using namespace std;
+
+bool edge[201][201]; // 结点从1开始编号。
+
+int v[2010];
+
+int N, M, K, i, n, x, y;
+
+bool flag;
+
+unordered_set<int> s;
+
+int main() {
+    scanf("%d %d\n", &N, &M);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &x, &y);
+        edge[x][y] = edge[y][x] = true; // 无向图。
+    }
+    scanf("%d", &K);
+    while (K--) {
+        flag = true;
+        scanf("%d", &n);
+        /*
+         * 注意，即使提前就能判断不是汉密尔顿回路，也要接受剩下的输入，不然下一次循环就乱套了。
+        if (n-1 != N) {
+            printf("NO\n");
+            continue;
+        }
+        */
+        for (i=0; i<n; i++) {
+            scanf("%d", &v[i]);
+            s.insert(v[i]);
+        }
+        // 汉密尔顿回路必须：
+        // 1. 头尾相同。
+        // 2. 遍历所有结点。
+        // 3. 所有结点被访问一次且仅一次。
+        // 4. 哈密尔顿回路的结点数比图中结点数多一个，这个结点就是起始结点也是终止结点。
+        // 5. 利用set的去重功能，判定所有结点都被访问一次且仅一次。
+        // 6. 连接结点的边必须存在。
+        if (n-1!=N || s.size()!=N || v[0]!=v[n-1])
+            flag = false;
+        for (i=0; flag && i<n-1; i++) {
+            if (!edge[v[i]][v[i+1]])
+                flag = false;
+        }
+        printf(flag? "YES\n": "NO\n");
+        s.clear();
+    }
+}
+```
+
+
+## 1123 Is It a Complete AVL Tree (30 分)
+
+1. 判断一棵树是否是完全二叉树，只需对齐进行**先序遍历**，填充到从1开始的数组中，如果数组前N个都填满了，就是，否则不是。
+
+```cpp
+void dfs(Node* t, int i) {
+    if (t) {
+        a[i] = t->data;
+        if (t->left)
+            dfs(t->left, i*2);
+        if (t->right)
+            dfs(t->right, i*2+1);
+    }
+}
+```
+
+```cpp
+#include <iostream>
+#include <queue>
+using namespace std;
+
+struct Node {
+    int data;
+    Node* left;
+    Node* right;
+    Node(): left(nullptr), right(nullptr) {}
+    Node(int x): data(x), left(nullptr), right(nullptr) {}
+};
+
+// 图像：/ 
+//
+Node* rotateRight(Node* root) {
+    Node* newRoot = root->left;
+    root->left = newRoot->right;
+    newRoot->right = root;
+    return newRoot;
+}
+
+// 图像：\
+//
+Node* rotateLeft(Node* root) {
+    Node* newRoot = root->right;
+    root->right = newRoot->left;
+    newRoot->left = root;
+    return newRoot;
+}
+
+// 图像：/
+//       \
+//
+Node* rotateLeftRight(Node* root) {
+    root->left = rotateLeft(root->left);
+    return rotateRight(root);
+}
+
+// 图像：\
+//       /
+//
+Node* rotateRightLeft(Node* root) {
+    root->right = rotateRight(root->right);
+    return rotateLeft(root);
+}
+
+// 这里的高度指以root为根的子树的层数。
+int getHeight(Node* root) {
+    if (!root)
+        return 0;
+    return max(getHeight(root->left), getHeight(root->right)) + 1;
+}
+
+// avl树首先是一棵二叉搜索树。
+Node* insert(Node* root, int x) {
+    if (root == nullptr) {
+        root = new Node(x);
+    } else if (x < root->data) {
+        root->left = insert(root->left, x);
+        if (getHeight(root->left)-getHeight(root->right) > 1) {
+            if (x < root->left->data) // LL插入。
+                root = rotateRight(root);
+            else // LR插入。
+                root = rotateLeftRight(root);
+        }
+    } else if (x > root->data) {
+        root->right = insert(root->right, x);
+        // 借助递归，从叶往根逐步再平衡。（从下到上）
+        if (getHeight(root->right)-getHeight(root->left) > 1) { // 插入右子树。
+            if (x > root->right->data) // RR插入，只需一次左旋。这里不用检查root->right是否存在，因为不平衡就说明了它存在。
+                root = rotateLeft(root);
+            else // RL插入，即插入root的右子树的左子树。
+                root = rotateRightLeft(root);
+        }
+    }
+    // 这里没有`x==root->data`，因为题目保证输入的数字两两不相同。
+    return root;
+}
+
+
+int N, i, x, n;
+
+Node* t;
+
+int levelOrder[20];
+
+int a[21]; // 用数组来存储树，从1开始。
+
+void bfs(Node* t) {
+    Node* p;
+    queue<Node*> q;
+    q.push(t);
+    while (!q.empty()) {
+        p = q.front();
+        q.pop();
+        levelOrder[n++] = p->data;
+        if (p->left)
+            q.push(p->left);
+        if (p->right)
+            q.push(p->right);
+    }
+}
+
+void dfs(Node* t, int i) {
+    if (t) {
+        a[i] = t->data;
+        if (t->left)
+            dfs(t->left, i*2);
+        if (t->right)
+            dfs(t->right, i*2+1);
+    }
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d", &x);
+        t = insert(t, x);
+    }
+    bfs(t);
+    printf("%d", levelOrder[0]);
+    for (i=1; i<n; i++)
+        printf(" %d", levelOrder[i]);
+    printf("\n");
+
+    for (i=0; i<21; i++)
+        a[i] = -1;
+    dfs(t, 1);
+    for (i=1; i<21 && a[i]!=-1; i++)
+        ;
+    if (i-1 != n)
+        printf("NO\n");
+    else
+        printf("YES\n");
+}
+```
+
+
+## 1124 Raffle for Weibo Followers (20 分)
+
+```cpp
+#include <iostream>
+#include <string>
+#include <vector>
+#include <unordered_map>
+using namespace std;
+
+int N, M, S, i;
+
+vector<string> v;
+
+unordered_map<string, bool> book;
+
+int main() {
+    cin >> M >> N >> S;
+    v.resize(M+1); // 从1开始编号。
+    for (i=1; i<=M; i++)
+        cin >> v[i];
+    for (i=S; i<=M; i+=N) {
+        while (book[v[i]])
+            i++;
+        cout << v[i] << '\n'; // 不要频繁输出endl。
+        book[v[i]] = true;
+    }
+    if (book.size() == 0)
+        cout << "Keep going..." << endl;
+}
+```
+
+
+## 1125 Chain the Ropes (25 分)
+
+1. 题目是说两段绳子连成一个环，当作一段绳子，新的绳子长度为两端绳子和的一半。给定一个序列，问构造出的最长的绳子的长度。
+2. 在构造过程中，会不断除2，显然越长的绳子先用来构造，损失越多，所以先用短的绳子来构造。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int N, i;
+
+int a[10000];
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%d", a+i);
+    sort(a, a+N);
+    double len = a[0];
+    for (i=1; i<N; i++)
+        len = (len+a[i])/2;
+    printf("%d\n", (int)len);
+}
+```
+
+
+## 1126 Eulerian Path (25 分)
+
+1. 这里有一个情况是输入的图不连通，那肯定不存在欧拉路或欧拉回路。
+2. 注意，单纯判断是否存在度为0的结点无法判断图是否不连通，因为可能一个图存在两个连通分量，但确实没有度为0的结点，即每个连通分量至少有两个或两个以上互连的结点。
+3. 判断一个图是否连通，可以用dfs次数，或用并查集查看集合个数。
+4. 使用并查集时，写完make_set()，在main()中马上调用，不然很容易忘。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int N, M, i, nEven, nOdd, a, b, nConnected=1;
+
+int degree[501]; // 结点编号从1开始。
+
+// 这里有一个情况是输入的图不连通，那肯定不存在欧拉路或欧拉回路。
+// 注意，单纯判断是否存在度为0的结点无法判断图是否不连通，因为可能一个图存在两个连通分量，但确实没有度为0的结点，即每个连通分量至少有两个或两个以上互连的结点。
+//
+// 判断一个图是否连通，可以用dfs次数，或用并查集查看集合个数。
+
+int disjoint[501];
+int rank_[501];
+
+void make_set() {
+    for (int i=0; i<501; i++) {
+        disjoint[i] = i;
+        // rank_[i] = 0; // 全局变量，默认初始化。
+    }
+}
+
+int find(int i) {
+    if (disjoint[i] != i)
+        disjoint[i] = find(disjoint[i]);
+    return disjoint[i];
+}
+
+void union_(int x, int y) {
+    int a = find(x);
+    int b = find(y);
+    if (rank_[a] > rank_[b])
+        disjoint[b] = a;
+    else {
+        disjoint[a] = b;
+        if (rank_[a] == rank_[b])
+            rank_[b]++;
+    }
+}
+
+int main() {
+    make_set();
+    scanf("%d %d", &N, &M);
+    for (i=0; i<M; i++) {
+        scanf("%d %d", &a, &b);
+        degree[a]++;
+        degree[b]++;
+        union_(a, b);
+    }
+    int p = find(1);
+    printf("%d", degree[1]);
+    for (i=2; i<=N; i++) {
+        printf(" %d", degree[i]);
+        if (find(i) != p)
+            nConnected++;
+    }
+    for (i=1; i<=N; i++) {
+        if (degree[i]%2)
+            nOdd++;
+        else
+            nEven++;
+    }
+    if (nConnected==1 && nEven == N)
+        printf("\nEulerian\n");
+    else if (nConnected==1 && nOdd == 2)
+        printf("\nSemi-Eulerian\n");
+    else
+        printf("\nNon-Eulerian\n");
+}
+```
+
+
+## 1127 ZigZagging on a Tree (30 分)
+
+1. 根据中序和后序序列建二叉树。
+2. 层序遍历，每一层，轮流顺序输出和逆序输出，顺序输出直接打印，逆序输出先入栈，后打印。
+
+```cpp
+#include <iostream>
+#include <stack>
+#include <queue>
+using namespace std;
+
+struct Node {
+    int data;
+    Node* left;
+    Node* right;
+    Node(): left(nullptr), right(nullptr) {}
+    Node(int d): data(d), left(nullptr), right(nullptr) {}
+};
+
+int N, i;
+
+int inorder[30];
+int postorder[30];
+
+Node* tree;
+
+Node* createBTree(int iStart, int pStart, int len) {
+    if (!len)
+        return nullptr;
+    Node* root = new Node(postorder[pStart]);
+    int postRightSubStart = pStart-1;
+    int inLeftSubStart = iStart;
+    int i;
+    for (i=iStart; inorder[i]!=postorder[pStart]; i++) // 这里没有`i<iStart+len`，因为题目保证序列合法，故一定可以找到。
+        ;
+    int inRightSubStart = i+1;
+    int leftSubLen = i - iStart;
+    int rightSubLen = len - 1 - leftSubLen;
+    int postLeftSubStart = pStart - 1 - rightSubLen;
+    root->left = createBTree(inLeftSubStart, postLeftSubStart, leftSubLen);
+    root->right = createBTree(inRightSubStart, postRightSubStart, rightSubLen);
+    return root;
+}
+
+void bfs() {
+    Node* p;
+    int level = 2;
+    queue<Node*> q;
+    stack<int> s;
+    q.push(tree); // 根是第一层。
+    q.push(nullptr);
+    printf("%d", tree->data);
+    while (!q.empty()) {
+        p = q.front();
+        q.pop();
+        if (p == nullptr) {
+            if (q.empty()) // 避免反复push(nullptr)和pop(nullptr)，无限循环。
+                break;
+            if (level%2) {
+                while (!s.empty()) {
+                    printf(" %d", s.top());
+                    s.pop();
+                }
+            }
+            q.push(nullptr);
+            level++;
+            continue;
+        }
+        if (p->left) {
+            q.push(p->left);
+            if (level%2 == 0)
+                printf(" %d", p->left->data);
+            else
+                s.push(p->left->data);
+        }
+        if (p->right) {
+            q.push(p->right);
+            if (level%2 == 0)
+                printf(" %d", p->right->data);
+            else
+                s.push(p->right->data);
+        }
+    }
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%d", inorder+i);
+    for (i=0; i<N; i++)
+        scanf("%d", postorder+i);
+    tree = createBTree(0, N-1, N);
+    bfs();
+    printf("\n");
+}
+```
+
+
+## 1128 N Queens Puzzle (20 分)
+
+1. 判断给出的输入序列是否是一个合法的N皇后问题解法。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+bool checked[1001]; // 行号从1开始。
+
+int N, i, K, j;
+
+int lineNO[1001];
+
+bool flag;
+
+// 题目保证皇后在不同列上，这里只需要检查是否在同一行上或对角线上。
+
+int main() {
+    scanf("%d", &K);
+    while (K--) {
+        scanf("%d", &N);
+        for (i=1; i<=N; i++)
+            scanf("%d", lineNO+i);
+        flag = true;
+        checked[lineNO[1]] = true;
+        for (i=2; flag && i<=N; i++) {
+            if (checked[lineNO[i]]) { // 两个皇后在同一行。
+                flag = false;
+            }
+            /*
+            if (abs(lineNO[i]-lineNO[i-1]) == 1) { // 两个皇后在对角线上，\或/。
+                flag = false;
+            }
+            */
+            // 注意，在对角线上，可能不相邻。
+            for (j=i-1; j>=1; j--) {
+                if (abs(lineNO[i]-lineNO[j]) == i-j)
+                    flag = false;
+            }
+            checked[lineNO[i]] = true;
+        }
+        if (flag)
+            printf("YES\n");
+        else
+            printf("NO\n");
+        for (i=1; i<=N; i++)
+            checked[i] = false;
+    }
+}
+```
+
+
+## 1129 Recommendation System (25 分)
+
+1. 这道题值得好好看下。
+2. std::set+结构体自定义<运算符实现自定义排序。
+3. set的有序是在插入时维护的，set用红黑树实现，插入的时间复杂度是O(logn)，比排序函数一般的O(nlogn)小。删除、查找的时间复杂度也是O(logn)，删除单个元素的时间复杂度是O(1)。
+4. 如果用vector+sort，就会超时。
+
+```cpp
+#include <iostream>
+#include <set>
+using namespace std;
+
+struct Node {
+    int key;
+    int n;
+    Node(int k, int n_): key(k), n(n_) {}
+    bool operator<(const Node& a) const {
+        if (n != a.n)
+            return n>a.n;
+        return key<a.key;
+    }
+};
+
+int N, K, i, x, j;
+
+set<Node> s;
+
+int frequence[50001];
+
+int main() {
+    auto it = s.begin();
+    scanf("%d %d\n%d", &N, &K, &x);
+    frequence[x]++;
+    s.insert(Node(x, 1));
+    for (i=1; i<N; i++) {
+        scanf("%d", &x);
+        printf("%d:", x);
+        for (it=s.begin(), j=0; j<K && it!=s.end(); j++, it++)
+            printf(" %d", it->key);
+        printf("\n");
+        if ((it=s.find(Node(x, frequence[x]))) != s.end())
+            s.erase(it);
+        frequence[x]++;
+        s.insert(Node(x, frequence[x]));
+    }
+}
+```
+
+
+## 1130 Infix Expression (25 分)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+struct Node {
+    string data;
+    int left, right;
+    Node(): left(-1), right(-1) {}
+};
+
+int N, i, lchild, rchild, root;
+
+bool checked[21];
+
+char temp[20];
+
+Node t[21]; // 结点的地址从1开始。
+
+pair<string, int> inorderTraversal(int root) {
+    if (root == -1)
+        return make_pair("", 0);
+    string s;
+    auto p1 = inorderTraversal(t[root].left);
+    if (!p1.first.empty()) {
+        if (p1.second == 1) // 只有操作数，不需要加括号。
+            s = p1.first + t[root].data;
+        else
+            s = "(" + p1.first + ")" + t[root].data;
+    } else {
+        s = t[root].data;
+    }
+    auto p2 = inorderTraversal(t[root].right);
+    if (!p2.first.empty()) {
+        if (p2.second == 1) // 只有操作数，不需要加括号。
+            s += p2.first;
+        else
+            s += "(" + p2.first + ")";
+    }
+    return make_pair(s, max(p1.second, p2.second)+1);
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=1; i<=N; i++) {
+        scanf("%s %d %d", temp, &lchild, &rchild);
+        t[i].data = temp;
+        if (lchild != -1) {
+            t[i].left = lchild;
+            checked[lchild] = true;
+        }
+        if (rchild != -1) {
+            t[i].right = rchild;
+            checked[rchild] = true;
+        }
+    }
+    for (i=1; i<=N && checked[i]; i++)
+        ;
+    root = i; // 没有边指向结点i，故结点i就是根。
+    auto p = inorderTraversal(root);
+    printf("%s\n", p.first.c_str());
+}
+```

@@ -1,0 +1,513 @@
+## 1007 Maximum Subsequence Sum (25 分)
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <climits>
+using namespace std;
+
+int K;
+
+int main() {
+    int i;
+    scanf("%d", &K);
+    vector<int> v(K);
+	// 定义子问题。
+    vector<int> dp(K); // dp[i]表示以v[i]结尾的最大连续子序列。
+    vector<int> start(K); // start[i]表示以v[i]结尾的最大连续子序列的起点。
+    int nNegative = 0;
+    for (i=0; i<K; i++) {
+        scanf("%d", &v[i]);
+        if (v[i] < 0)
+            nNegative++;
+    }
+    if (nNegative == K) {
+        printf("0 %d %d\n", v.front(), v.back());
+        return 0;
+    }
+    // 边界：
+    dp[0] = v[0];
+    start[0] = 0;
+    // int maxDP = INT_MIN;
+    int maxDP = dp[0];
+    int maxI = 0;
+    for (i=1; i<K; i++) {
+        if (v[i]+dp[i-1] > v[i]) {
+            dp[i] = v[i]+dp[i-1];
+            start[i] = start[i-1];
+        } else {
+            dp[i] = v[i];
+            start[i] = i;
+        }
+        if (dp[i] > maxDP) {
+            maxDP = dp[i];
+            maxI = i;
+        }
+    }
+    printf("%d %d %d\n", maxDP, v[start[maxI]], v[maxI]);
+}
+```
+
+
+## 1033 To Fill or Not to Fill (25 分)
+
+1. 对输入排序。
+2. 贪心：以当前汽车所在的加油站的油价A为标准，考察汽车加满油能到达的最大距离的范围内，有无比A更低的加油站，如果有则在当前加油站加到刚好能到达那个加油站的油，去到那个加油站。如果没有比A更低的加油站，则在当前加油站加满油，取到最低的那个加油站。
+3. https://www.liuchuo.net/archives/2461
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <climits>
+using namespace std;
+
+struct station {
+    double price, dis;
+};
+
+bool cmp1(station a, station b) {
+    return a.dis < b.dis;
+}
+
+int main() {
+    double cmax, d, davg;
+    int n;
+    scanf("%lf%lf%lf%d", &cmax, &d, &davg, &n);
+    vector<station> sta(n + 1);
+    sta[n] = {0.0, d}; // 在终点加一个虚拟加油站/哨兵，价格是0，是最便宜的，方便下面代码编写。
+    for(int i = 0; i < n; i++)
+        scanf("%lf%lf", &sta[i].price, &sta[i].dis);
+    sort(sta.begin(), sta.end(), cmp1); // 对输入按加油站离杭州的距离排序。
+	// leftdis是汽车中所剩的油还能走的路程。
+    double nowdis = 0.0, maxdis = 0.0, nowprice = 0.0, totalPrice = 0.0, leftdis = 0.0;
+    if(sta[0].dis != 0) {
+        printf("The maximum travel distance = 0.00");
+        return 0;
+    } else {
+        nowprice = sta[0].price; // 起点的加油站的价格。
+    }
+    while(nowdis < d) { // 只要还没到，
+        maxdis = nowdis + cmax * davg; // 假如加满油可到达的最远距离maxdis。
+		// 考察(nowdis, maxdis]内的加油站，找到一个油价比当前加油站nowprice低的加油站，或若没有的话，则找尽可能低的加油站。
+        double minPriceDis = 0, minPrice = INT_MAX;
+        int flag = 0;
+        for(int i = 1; i <= n && sta[i].dis <= maxdis; i++) {
+            if(sta[i].dis <= nowdis) continue;
+            if(sta[i].price < nowprice) {
+				// 注意减掉leftdis，先把汽车剩的油用光。
+                totalPrice += (sta[i].dis - nowdis - leftdis) * nowprice / davg; // 在当前加油站加**恰好多**的油到这个**更便宜**的加油站。
+                leftdis = 0.0;
+                nowprice = sta[i].price;
+                nowdis = sta[i].dis; // 注意对nowdis的赋值，表示车会到下一个加油站。   
+                flag = 1; // 找到了比当前加油站价格更低的加油站。
+                break;
+            }
+            if(sta[i].price < minPrice) {
+                minPrice = sta[i].price;
+                minPriceDis = sta[i].dis;
+            }
+        }
+        if(flag == 0 && minPrice != INT_MAX) {
+			// 下一个加油站，比当前加油站贵，所以要在这个加油站加满油过去。可能在上一个加油站时也是这么做的，所以上一个加油站加满的油到这个加油站时
+			// 还有剩，肯定不是倒掉，只需在剩的基础上在这个加油站加满即可。
+            totalPrice += (nowprice * (cmax - leftdis / davg));  // 在当前加油站加恰好多的油到这个**尽可能**便宜的加油站，注意上次加油
+            leftdis = cmax * davg - (minPriceDis - nowdis); // 计算出到下一个加油站时，剩多少油。
+            nowprice = minPrice;
+            nowdis = minPriceDis; // 注意对nowdis的赋值，表示车会到下一个加油站。     
+        }
+        if(flag == 0 && minPrice == INT_MAX) { // 循环后minPrice == INT_MAX，即在(nowdis, maxdis]范围内没有加油站了。
+            printf("The maximum travel distance = %.2f", maxdis); // 那么汽车肯定到不了目的地，因为我们上面在目的地设置了一个价格为0的加油站。
+            return 0;
+        }
+    }
+    printf("%.2f", totalPrice);
+    return 0;
+}
+```
+
+
+## 1040 Longest Symmetric String (25 分)
+
+1. 
+```cpp
+// 注意如果有一下两种输入的区别，对于"Is PAT&TAP symmetric?"，
+// 下面第一种s的值是"Is"，第二种的值是"Is PAT&TAP symmetric?"。
+// cin >> s;
+getline(cin, s);
+```
+2. 这里有一份错误的实现：
+```cpp
+dp[0][0] = true;
+for (i=1; i<s.size(); i++) {
+    dp[i][i] = true;
+    if (s[i] == s[i-1]) {
+        dp[i][i-1] = true;
+        maxLen = 2;
+    }
+}
+```
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+string s;
+
+// 如果要创建一个二维数组，那么静态分配内存吧，不然用vector动态内存，又得要一个循环来进行resize。
+bool dp[1000][1000]; // dp[i][j]表示s[i]到s[j]所表示的字串是否是回文字串。全局变量，默认初始化为false。
+
+int main() {
+    int i, j, n, l, ans=1; // ans初始值为1而不是0，因为单个字符就是对称/回文的。
+    // 注意如果有一下两种输入的区别，对于"Is PAT&TAP symmetric?"，
+    // 下面第一种s的值是"Is"，第二种的值是"Is PAT&TAP symmetric?"。
+    // cin >> s;
+    getline(cin, s);
+    n = s.size();
+	// 先求出长度1和长度2的子串的dp值，供后面的循环使用。
+    dp[i][i] = true;
+    for (i=0; i<n-1; i++) {
+        dp[i][i] = true;
+        if (s[i] == s[i+1]) {
+            dp[i][i+1] = true;
+            ans = 2;
+        }
+        // else dp[i][i+1] = false;
+    }
+    for (l=3; l<=n; l++) { // l表示对称/回文字串长度，所以它最大可以是n。
+        for (i=0; i+l-1<n; i++) {
+            j = i+l-1; // 左闭加区间长度等于右开，所以要减一。
+            if (s[i]==s[j] && dp[i+1][j-1]==true) { // 并且[i, j]的字串[i+1, j-1]也是回文的的话。
+                dp[i][j] = true;
+                ans = l;
+            }
+            // else dp[i][j] = false;
+        }
+    }
+    printf("%d\n", ans);
+}
+```
+
+
+## 1045 Favorite Color Stripe (30 分)
+
+1. 使用递归枚举所有组合，但明显会超时，而且因为没有返回值，好像不好做缓存。
+2. 换一个角度，是什么反映了喜欢的颜色的顺序？是该颜色在喜欢颜色数组中的下标，较小先出现，较大后出现。那么我们可以反过来，以喜欢的颜色的编号作为下标，以其在喜欢颜色序列中的下标作为值。然后，从输入的颜色序列中过滤不喜欢的颜色，然后并不存储该颜色的编号，而是存储该颜色在喜欢颜色数组中的下标，这样问题可以转换为求最长不下降子序列（无需连续）。
+3. 比如：喜欢颜色序列{2 3 1 5 6}, 输入颜色序列{2 2 4 1 5 5 6 3 1 1 5 6}, 解有{2 2 1 1 1 5 6}, {2 2 1 5 5 5 6}, {2 2 1 5 5 6 6}, and {2 2 3 1 1 5 6}. 把这些解翻译成颜色在喜欢颜色序列中的下标，得到{1, 1, 3, 3, 3, 4, 5}, {1, 1, 3, 4, 4, 4, 5}, {1, 1, 3, 4, 4, 5, 5}, and {1, 1, 2, 3, 3, 4, 5}。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int N, M, L, max_=-1;
+
+int favoriteColor[200];
+
+int a[10000];
+
+void foo1(int start, int color, int length) {
+    for (; start<L && a[start]!=favoriteColor[color]; start++)
+        ;
+    if (start == L) { // 从start开始找不到color，返回。
+        if (length > max_) {
+            max_ = length;
+        }
+        return;
+    }
+    for (int i=0; i<M-color; i++)
+        foo1(start+1, color+i, length+1);
+}
+
+void foo() {
+    for (int i=0; i<M; i++)
+        foo1(0, i, 0);
+}
+
+int main() {
+	int i, j;
+    scanf("%d\n%d", &N, &M);
+    for (i=0; i<M; i++)
+        scanf("%d", favoriteColor+i);
+    scanf("%d", &L);
+    for (i=0; i<L; i++)
+        scanf("%d", a+i);
+    foo();
+    printf("%d\n", max_);
+}
+```
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int N, M, L, num, x, max_=-1;
+
+int book[201], dp[10000]; // dp[i]表示输入的颜色序列中以a[i]结尾的最长不下降子序列的长度。
+
+int a[10000];
+
+int main() {
+    int i, j;
+    scanf("%d\n%d", &N, &M);
+    for (i=1; i<=M; i++) {
+        scanf("%d", &x);
+        book[x] = i;
+    }
+    scanf("%d", &L);
+    for (i=num=0; i<L; i++) {
+        scanf("%d", &x);
+        if (book[x] > 0)
+            a[num++] = book[x];
+    }
+    for (i=0; i<num; i++) {
+        dp[i] = 1;
+        for (j=0; j<i; j++) {
+            if (a[i] >= a[j]) // 首先是不下降，
+                dp[i] = max(dp[i], dp[j]+1); // 然后是询问a[i]跟在a[j]后面是否可以构成更长的不下降子序列。
+        }
+        max_ = max(dp[i], max_);
+    }
+    printf("%d\n", max_);
+}
+```
+
+
+## 1067 Sort with Swap(0, i) (25 分)
+
+1. 一个关键的点是，交换两个元素的下标，就是交换了两个元素的位置。所以不必存储和操作原数组，只需存储和操作下标数组即可。如对于`{4, 0, 2, 1, 3}`，我们直接操作`{1, 3, 2, 4, 0}`
+2. TODO
+
+
+## 洛谷 P1048 采药
+
+1. 动态规划，01背包问题。
+2. https://zhuanlan.zhihu.com/p/35278858，其中有回溯的代码。
+3. 如果使用了一维的数组，就无法进行回溯，查看挑选了哪些物品。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int T, M;
+
+// 下标从1开始，因为下标0是边界。
+
+int dp[101][1001]; // dp[i][j]表示前i个（包括第i个物品），挑着放入最大承重j的背包中，最大的价值。
+
+int w[101], v[101];
+
+int main() {
+	int i, j;
+    scanf("%d %d", &T, &M);
+    for (i=1; i<=M; i++)
+        scanf("%d %d", w+i, v+i);
+	// 边界是`dp[0][j]=0`和`dp[i][0]=0`，这已经由全局变量默认初始化完成了。
+	// 从边界开始往上推。
+    for (i=1; i<=M; i++) { // 枚举前i个物品，
+        for (j=w[i]; j<=T; j++) { // 枚举最大承重j，
+            dp[i][j] = max(dp[i-1][j-w[i]]+v[i], dp[i-1][j]); // 选或不选物品i，看谁能够构造出更大的价值。
+        }
+    }
+    printf("%d\n", dp[M][T]);
+}
+
+/*
+void traceBack(int i, int j) {
+    if (i <= 0)
+        return;
+    if (dp[i][j] == dp[i-1][j]) {
+        // 没选i。
+        traceBack(i-1, j);
+    } else {
+        v.push_back(i);
+        traceBack(i-1, j-w[i]);
+    }
+}
+*/
+```
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int T, M;
+
+int dp[1001]; // 滚动数组，见算法笔记。
+
+int w[101], v[101];
+
+int main() {
+	int i, j;
+    scanf("%d %d", &T, &M);
+    for (i=1; i<=M; i++)
+        scanf("%d %d", w+i, v+i);
+    for (i=1; i<=M; i++)
+        for (j=T; j>=w[i]; j--) // j要从T开始，因为`j-w[i]`用到了比j小的哪些状态，如果j从1开始，那么状态`dp[j-w[i]]`还没用，就被覆盖了。
+            dp[j] = max(dp[j-w[i]]+v[i], dp[j]);
+    printf("%d\n", dp[T]);
+}
+```
+
+
+## 1068 Find More Coins (30 分)
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+int N, M;
+
+// 可认为硬币的重量与价值相等，所以dp[N][M]最多等于M，如果价值与重量不相等，那么dp[N][M]才可能大于M。
+// 把硬币的重量与价值看作相等，是这道题比较难的一个点。
+
+int w[10001]; // 硬币面值。下标从1开始，因为下标0是边界。
+
+// dp[i][j]表示前i个（包括第i个物品），挑着放入最大承重j的背包中，最大的价值。
+int dp[10001][101];
+// int dp[101]; // 滚动数组优化存储空间，但没法回溯。
+
+void backtracing(int i, int j, bool flag) { // flag只是为了控制打印格式。
+    if (i<=0 || j<=0)
+        return;
+	// if (dp[i][j] == dp[i-1][j]) { // 错误，在这里不能唯一确定i没被选中，不知道原因。 
+    if (dp[i][j] == dp[i-1][j-w[i]]+w[i]) {
+        if (flag) {
+            printf("%d", w[i]);
+            flag = false;
+        } else
+            printf(" %d", w[i]);
+        backtracing(i-1, j-w[i], flag);
+    } else {
+        backtracing(i-1, j, flag);
+    }
+}
+
+int main() {
+    int i, j;
+    scanf("%d %d", &N, &M);
+    for (i=1; i<=N; i++)
+        scanf("%d", &w[i]);
+    sort(w+1, w+N+1, [](int a, int b){ return a>b; });
+    for (i=1; i<=N; i++) {
+        // 注意如果是一维dp数组，那么j要从M开始，否则如果从w[i]开始，那么当j增长到比较大时，dp[j-w[i]]已经被新值覆盖了。
+        for (j=M; j>=w[i]; j--) {
+            dp[i][j] = max(dp[i-1][j-w[i]]+w[i], dp[i-1][j]);
+            // dp[j] = max(dp[j-w[i]]+w[i], dp[j]);
+        }
+    }
+    if (dp[N][M] != M) printf("No Solution");
+    // if (dp[M] != M) printf("No Solution");
+    else {
+        backtracing(N, M, true);
+    }
+}
+```
+
+
+## 1070 Mooncake (25 分)
+
+1. 对输入排序后，很简单的贪心。
+2. 注意inventory可能是小数，这是因为inventory的单位是千吨，而不是一个月饼！
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+struct Node {
+    float inventory;
+    float price; // 单位是百万元，所以可以是浮点数。
+    float unitPrice; // 每千吨的价格，所以也可以是浮点数。
+};
+
+Node a[1000];
+
+int N, D, i;
+
+float total;
+
+int main() {
+    scanf("%d %d", &N, &D);
+    for (i=0; i<N; i++)
+        scanf("%f", &a[i].inventory);
+    for (i=0; i<N; i++) {
+        scanf("%f", &a[i].price);
+        a[i].unitPrice = a[i].price/a[i].inventory;
+    }
+	// 按单价降序排序，总是先取单价最高的月饼进行销售。
+    sort(a, a+N, [](const Node& a, const Node& b){ return a.unitPrice>b.unitPrice; });
+    for (i=0; i<N && D; i++) {
+        if (a[i].inventory <= D) {
+            total += a[i].price;
+            D -= a[i].inventory;
+        } else {
+            total += a[i].unitPrice*D; // 取出部分。
+            break;
+        }
+    }
+    printf("%.2f\n", total);
+}
+```
+
+
+## 1117 Eddington Number (25 分)
+
+1. E -- that is, the maximum integer E such that it is for E days that one rides more than E miles.
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int N, i;
+
+int a[100001];
+
+bool cmp(int a, int b) {
+    return a>b;
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=1; i<=N; i++)
+        scanf("%d", a+i);
+    sort(a+1, a+N+1, cmp); // 先对输入排序，
+    for (i=1; i<=N; i++) { // 遍历天数，某天i的骑行路程必须大于i，
+        if (a[i] <= i)
+            break;
+    }
+    printf("%d\n", i-1);
+}
+```
+
+
+## 1125 Chain the Ropes (25 分)
+
+1. 两条绳子各自折半变成一条新的绳子，所以比较长的绳子应该要尽量少地被折半，这样它的贡献的长度越多，所以先使用短地绳子。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int N, i;
+
+int a[10000];
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%d", a+i);
+    sort(a, a+N);
+    double len = a[0];
+    for (i=1; i<N; i++)
+        len = (len+a[i])/2;
+    printf("%d\n", (int)len);
+}
+```

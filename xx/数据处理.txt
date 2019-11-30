@@ -1,0 +1,1302 @@
+## 1006 Sign In and Sign Out (25 分)
+
+1. 因为题目只需要输出最小值和最大值，这些时间信息在输入时用完就不会再用到了，所以不需要存储。
+2. 利用scanf格式化提取输入。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <climits>
+using namespace std;
+
+struct Record {
+    char id[16]; // 题目给出了id的长度范围，所以用定长的字符数组即可，而不用string，注意多留一个字节存放'\0'。
+	// 因为题目只需要输出最小值和最大值，这些时间信息在输入时用完就不会再用到了，所以不需要存储。
+	// int signin;
+	// int signout;
+};
+
+vector<Record> v;
+
+int N, minT=INT_MAX, maxT=INT_MIN; // 最小初始化为最大，最大初始化为最小。
+int minI, maxI;
+
+int main() {
+    int i, h1, m1, s1, h2, m2, s2, t1, t2;
+    scanf("%d", &N);
+    v.resize(N);
+    for (i=0; i<N; i++) {
+        scanf("%s %d:%d:%d %d:%d:%d", v[i].id, &h1, &m1, &s1, &h2, &m2, &s2);
+        t1 = h1*3600+m1*60+s1;
+        t2 = h2*3600+m2*60+s2;
+        if (t1 < minT) {
+            minT = t1;
+            minI = i;
+        }
+        if (t2 > maxT) {
+            maxT = t2;
+            maxI = i;
+        }
+    }
+    printf("%s %s\n", v[minI].id, v[maxI].id);
+}
+```
+
+
+## 1012 The Best Rank (25 分)
+
+1. 这道题可以好好看一下。
+2. 通过对给出的样例输入求平均值，知道对平均值采用四舍五入。加0.5就可以四舍五入了。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+struct Student {
+    int id;
+    int grade[4];
+};
+
+// 输入的Student对象顺序存储，这样才能进行排序。
+Student ss[2001];
+char repr[4] = {'A', 'C', 'M', 'E'};
+// XXX 关键：以id作为索引来获取随机存取，即O(1)存取是比较重要的，否则在响应M个查询请求时，每一个都需要遍历一次，会导致O(n^2)。
+int Rank[1000000][4]; // id是6位数，或者也可以考虑用std::map，特别的，是std::unordered_map。
+// XXX 注意，这里不必维护4个map，只需维护一个map，然后value是一个四元组即可。
+
+int main() {
+    int N, M, i, j, toCheck, x;
+    char y;
+    cin >> N >> M;
+    for (i=0; i<N; i++) {
+        // XXX 注意ss.grade四个slot的组织方式，按照优先级'A'>'C'>'M'>'E'的方式来安排存储。
+        cin >> ss[i].id >> ss[i].grade[1] >> ss[i].grade[2] >> ss[i].grade[3];
+        // 注意除以3.0，做浮点数除法。
+        ss[i].grade[0] = (int)((ss[i].grade[1]+ss[i].grade[2]+ss[i].grade[3])/3.0+0.5);
+    }
+    // 依次按不同字段排序，并标记好rank。
+    for (i=0; i<4; i++) {
+        sort(ss, ss+N, [i](const Student &s1, const Student &s2){ return s1.grade[i] > s2.grade[i]; });
+        Rank[ss[0].id][i] = 1;
+        for (j=1; j<N; j++) {
+            if (ss[j].grade[i] == ss[j-1].grade[i])
+                Rank[ss[j].id][i] = Rank[ss[j-1].id][i];
+            else
+                Rank[ss[j].id][i] = j+1; // 比如有3个并列第一，则第4个是第4名，而不是第2名。
+        }
+    }
+    for (i=0; i<M; i++) {
+        cin >> toCheck;
+        if (Rank[toCheck][0] == 0) {
+            cout << "N/A" << endl;
+        } else {
+            /*
+            x = 1000;
+            for (j=0; j<4; j++) {
+                if (Rank[toCheck][j] < x) {
+                    y = repr[j];
+                    x = Rank[toCheck][j];
+                }
+            }
+            cout << x << ' ' << y << endl;
+            */
+            // 其实观察上面的循环中的更新x, y的语句，它只依赖于变量j，所以我们只需要循环记录那个恰当的j即可。
+            int k=0;
+            for (j=1; j<4; j++) {
+                if (Rank[toCheck][j] < Rank[toCheck][k])
+                    k = j;
+            }
+            cout << Rank[toCheck][k] << ' ' << repr[k] << endl;
+        }
+    }
+}
+```
+
+
+## 1016 Phone Bills (25 分)
+
+1. 先对无序的输入应用std::sort。
+2. 选择好数据结构。
+3. 用std::map/数组**按类聚集**。
+4. 不要先考虑优化，先正确解决问题再说。
+5. 打印时，头和尾是总是打印还是有条件地打印？
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <map>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+// tolls[0]表示00:00-01:00时段打长途电话的收费，单位是cents/minute。
+int tolls[24];
+
+struct Record {
+    string name;
+    int month, day, hour, minute;
+    bool on_line;
+    int timestamp; // 单位是分钟。
+    Record() {
+        name.resize(20); // 预先分配空间。
+    }
+};
+
+// XXX 按类聚集。
+// map是key有序的。
+map<string, vector<Record*>> m1; // XXX 如果不能用下标来索引对象的话，就用指针，避免拷贝整个对象。
+
+// XXX 存放输入。
+Record rs[1001];
+
+// https://blog.csdn.net/qq_38293932/article/details/88585312
+// 在这种情况下，用循环模拟时间的流动进行处理会简单很多。
+void pay(int d1, int h1, int m1, int d2, int h2, int m2, int &elapsed, float &charge)  //计算价格函数
+{
+    int time = 0;
+    double money = 0;
+    while (d1 != d2 || h1 != h2 || m1 != m2) {
+        time++;
+        m1++;
+        money += tolls[h1];
+        if (m1 == 60) {
+            m1 = 0;
+            h1++;
+        }
+        if (h1 == 24) {
+            h1 = 0;
+            d1++;
+        }
+    }
+    elapsed = time;
+    charge = money/100;
+    // printf("%d $%.2f\n", time, money / 100);
+}
+
+void calc(const Record &on_line, const Record &off_line, int &elapsed, float &charge) {
+    pay(on_line.day, on_line.hour, on_line.minute, off_line.day, off_line.hour, off_line.minute, elapsed, charge);
+    // 下面这个算法还是复杂了点……，遇到某些情况还是会出错。
+    /*
+    float c = 0;
+    int h = 0;
+    int i, j;
+    // 如果day不同，将on_line的day“推进”到off_line的day相邻。
+    for (i=on_line.day+1; i<off_line.day; i++) {
+        for (j=0; j<24; j++)
+            c += tolls[j]*60;
+        h += 24*60; // 编译器会帮我们优化成乘一个数，即会帮我们先算出24*60，而不必在运行时计算。
+    }
+    // XXX 注意小时时间戳在同一天内和不同天内的处理是不一样的。
+    if (on_line.day == off_line.day) {
+        // 如果hour不同，将on_line的hour“推进”到off_line的hour相邻。
+        for (i=on_line.hour+1; i<off_line.hour; i++) {
+            c += tolls[i]*60;
+            h += 60;
+        }
+    } else {
+        // 如果hour不同，将on_line的hour“推进”到off_line的hour相邻。
+        for (i=on_line.hour+1; i<24; i++) {
+            c += tolls[i]*60;
+            h += 60;
+        }
+        for (i=0; i<off_line.hour; i++) {
+            c += tolls[i]*60;
+            h += 60;
+        }
+    }
+    // XXX 注意分钟时间戳在同一小时内和不同小时内的处理是不一样的。
+    if (on_line.hour == off_line.hour) {
+        c += (off_line.minute-on_line.minute)*tolls[on_line.hour];
+        elapsed = h+(off_line.minute-on_line.minute);
+    } else {
+        c += (60-on_line.minute)*tolls[on_line.hour];
+        c += off_line.minute*tolls[off_line.hour];
+        elapsed = h+(60-on_line.minute)+off_line.minute;
+    }
+    charge = c/100; // 将美分转换为美元。
+    */
+}
+
+
+// You may assume that no two records for the same customer have the same time. 
+
+int main() {
+    int N, i, month, j, flag;
+    char s[10];
+    int elapsed;
+    float charge, totalCharge;
+    for (i=0; i<24; i++) {
+        scanf("%d", &tolls[i]);
+    }
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%s %d:%d:%d:%d %s", &rs[i].name[0], &rs[i].month, &rs[i].day, &rs[i].hour, &rs[i].minute, s);
+        rs[i].on_line = (s[0]=='o' && s[1]=='n');
+        // For each test case, all dates will be within a single month. 
+        rs[i].timestamp = rs[i].day*24*60 + rs[i].hour*60 + rs[i].minute; // 因为一个测试中输入记录的月份是相同的，所以不计入月份。
+        if (i == 0)
+            month = rs[i].month;
+        m1[rs[i].name].push_back(&rs[i]); // XXX 聚集
+    }
+    // 对每个人，按照时间戳升序record。
+    for (auto &it: m1) {
+        auto &v = it.second;
+        sort(v.begin(), v.end(), [](const Record *r1, const Record *r2){ return r1->timestamp<r2->timestamp; });
+        j = v.size();
+        totalCharge = 0;
+        flag = false;
+        for (i=0; i<j; i++) {
+            if (v[i]->on_line && i+1<j && !v[i+1]->on_line) { // XXX 注意先判断`i+1<j`，再用i+1来访问数组。
+                if (!flag) {
+                    printf("%s %02d\n", it.first.c_str(), month);
+                    flag = true;
+                }
+                calc(*v[i], *v[i+1], elapsed, charge);
+                printf("%02d:%02d:%02d %02d:%02d:%02d %d $%.2f\n", v[i]->day, v[i]->hour, v[i]->minute,
+                        v[i+1]->day, v[i+1]->hour, v[i+1]->minute, elapsed, charge);
+                totalCharge += charge;
+                i++;
+            }
+        }
+        // XXX 注意如果没有合法的记录，不打印下面这一句。
+        if (flag)
+            printf("Total amount: $%0.2f\n", totalCharge);
+    }
+}
+```
+
+
+## 1017 Queueing at Bank (25 分)
+
+1. 计算平均值，如果结果错了，不要只是检查被除数，还要看看除数是否计算正确。
+2. 做减法，注意到结果可能为负，可能要考虑减数和被减数的大小关系。
+3. 加减乘除，操作数的单位要一致！
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <climits>
+using namespace std;
+
+using Record = pair<int, int>;
+
+vector<Record> v;
+
+int N, K;
+
+bool cmp(const Record& a, const Record& b) {
+    return a.first<b.first;
+}
+
+const int START = 8*3600;
+const int END = 17*3600;
+
+int totalWaitTime;
+
+int main() {
+    int i, j, hh, mm, ss, t, minI, minT;
+    scanf("%d %d", &N, &K);
+    v.resize(N);
+    vector<int> win(K, START);
+    for (i=0; i<N; i++) {
+        scanf("%d:%d:%d %d", &hh, &mm, &ss, &t);
+        v[i].first = hh*3600+mm*60+ss;
+        v[i].second = t*60; // 注意输入的处理时间的单位是分钟，要转换为秒，单位保持一致。
+    }
+    sort(v.begin(), v.end(), cmp);
+    int n = 0;
+    for (auto& r: v) {
+        if (r.first > END)
+            break;
+        minT = INT_MAX;
+        for (j=0; j<K; j++) {
+            if (win[j] < minT) {
+                minT = win[j];
+                minI = j;
+            }
+        }
+        if (win[minI] > r.first) {
+            totalWaitTime += win[minI]-r.first;
+        }
+        if (win[minI] < r.first) {
+            win[minI] = r.first+r.second;
+        } else {
+            win[minI]+=r.second;
+        }
+        n++;
+    }
+    printf("%.1f\n", totalWaitTime*1.0/(n*60)); // 记得除以60，将单位转换为分钟。而且n不一定等于N，可能一些客户在17点后才来，这些客户不算。
+}
+```
+
+
+## 1022 Digital Library (30 分)
+
+1. 数据的组织方式，一个是根据输入建立一个数据结构，建立该数据结构对象的数组来接受输入，遇到查询时，遍历该数组。另一个是维护多个unordered_map/映射。TODO：其它。
+2. 使用cin、getline和scanf配合接收输入。TODO：除了刷题，cin和scanf最好不要混用。
+3. 注意吃掉换行符。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <unordered_map>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+
+int N, M;
+
+void query(unordered_map<string, set<int>> &m, string &s) {
+    if (m.find(s)==m.end())
+        printf("Not Found\n");
+    else {
+        for (auto it=m[s].begin(); it!=m[s].end(); it++)
+            printf("%07d\n", *it);
+    }
+}
+
+// 由于要有序输出符合查询条件的id，所以用set而不用vector。
+unordered_map<string, set<int>> titles, authors, keywords, publishers, years;
+
+int main() {
+    int i, id, type;
+    char c;
+    string title, author, keyword, publisher, year, temp;
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d\n", &id); // 注意跳过\n。
+        // 或者也可以：
+        // scanf("%d", &id);
+        // getchar();
+        getline(cin, title); // 这里注意要用getline，而不是cin>>，因为title可能由多个空格分隔的单词组成。
+        titles[title].insert(id);
+        getline(cin, author);
+        authors[author].insert(id);
+        // 注意这里的输入一行，然后跳到下一行的操作。另一个方法是使用stringstream。
+        while (cin >> keyword) {
+            keywords[keyword].insert(id);
+            if (getchar() == '\n')
+                break;
+        }
+        getline(cin, publisher);
+        publishers[publisher].insert(id);
+        getline(cin, year);
+        years[year].insert(id);
+    }
+    scanf("%d", &M);
+    for (i=0; i<M; i++) {
+        scanf("%d: ", &type);
+        getline(cin, temp);
+        cout << type << ": " << temp << endl;
+        switch (type) {
+        case 1: query(titles, temp); break;
+        case 2: query(authors, temp); break;
+        case 3: query(keywords, temp); break;
+        case 4: query(publishers, temp); break;
+        case 5: query(years, temp); break;
+        }
+    }
+}
+```
+
+
+## 1025 PAT Ranking (25 分)
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+struct testee {
+    char id[14]; // 13+1，因为要存储'\0'。
+    int score;
+    int final_rank;
+    int location;
+    int local_rank;
+};
+
+int N, K, i, j, k, sum;
+
+testee t[100*300];
+
+bool cmp(const testee &a, const testee &b) {
+    if (a.score != b.score) return a.score>b.score; // 如果score不相等，就按score降序排序，即若a.score比较大，那么a排前面。
+    else return strcmp(a.id, b.id)<0; // 如果score相等，就按id升序排序。
+}
+
+// 先按final rank升序输出，如果final rank相同，则按registration number升序输出。
+
+int main() {
+    scanf("%d", &N);
+    sum = 0;
+    for (i=1; i<=N; i++) {
+        scanf("%d", &K);
+        for (j=0; j<K; j++) {
+            scanf("%s %d", t[sum+j].id, &t[sum+j].score);
+            t[sum+j].location = i;
+        }
+        // XXX 在输入完一个location的testee后，在接受下一个location的输入前，马上整理这个location的testee的local rank。
+        // 对每个location的testee按score降序排序，整理出local rank。
+        sort(t+sum, t+sum+K, [](const testee &a, const testee &b){ return a.score>b.score; });
+        t[sum].local_rank = 1;
+        k = 2;
+        for (j=sum+1; j<sum+K; j++) {
+            if (t[j].score == t[j-1].score)
+                t[j].local_rank = t[j-1].local_rank;
+            else
+                t[j].local_rank = k;
+            k++;
+        }
+        sum += K;
+    }
+    // 对全部testee按score降序排序，整理出final rank。
+    sort(t, t+sum, cmp);
+    t[0].final_rank = 1;
+    k = 2;
+    for (j=1; j<sum; j++) {
+        if (t[j].score == t[j-1].score)
+            t[j].final_rank = t[j-1].final_rank;
+        else
+            t[j].final_rank = k;
+        k++;
+    }
+    // 输出。
+    // 先按id升序排序，
+    // sort(t, t+indexs[N+1], [](const testee &a, const testee &b){ return strcmp(a.id, b.id)<0; });
+    // 再按final rank升序排序，
+    // stable_sort(t, t+indexs[N+1], [](const testee &a, const testee &b){ return a.final_rank<b.final_rank; });
+    printf("%d\n", sum);
+    for (i=0; i<sum; i++) {
+        printf("%s %d %d %d\n", t[i].id, t[i].final_rank, t[i].location, t[i].local_rank);
+    }
+}
+```
+
+
+## 1039 Course List for Student (25 分)
+
+1. 在循环中频繁刷新缓冲区，是超时的一个重要原因。
+2. 因为用string则不能用scanf，所以可能导致超时，这时我们可以字节做哈希函数，用char[]数组存储输入，哈希一下得到对应的下标。
+3. 自定义字符串哈希函数。
+
+```cpp
+#include <iostream>
+#include <map>
+#include <string>
+#include <set>
+#include <algorithm>
+using namespace std;
+
+int getid(char *name) {
+    int hash = 0;
+    for (int i=0; i<3; i++)
+        hash = hash*26+(name[i]-'A'); // 大写字母，进制是26。
+    hash = hash*10+(name[3]-'0'); // 数字，进制是10。
+    return hash;
+}
+
+const int inf = 0x7fffffff;
+
+int N, K;
+
+// 由于要求有序，所以用了set。
+map<string, set<int>> m;
+// set<int> m[26*26*26*10+10]; // 手动做hash。
+
+string name;
+// char name[5]; // 注意，题目给出名字长度为4，则至少需要5个字节，一个字节保存'\0'。
+
+int main() {
+	int i, j, n, course;
+    cin >> N >> K;
+    // scanf("%d %d", &N, &K);
+    for (i=0; i<K; i++) {
+        cin >> course >> n;
+        // scanf("%d %d", &course, &n);
+        for (j=0; j<n; j++) {
+            cin >> name;
+			m[name].insert(course);
+            // scanf("%s", name);
+            // m[getid(name)].insert(course);
+        }
+    }
+    for (i=0; i<N; i++) {
+        cin >> name;
+        cout << name << ' ' << m[name].size();
+        for (const auto& x: m[name])
+            cout << ' ' << x;
+        // cout << endl; // 在循环中频繁刷新缓冲区，是超时的一个重要原因。
+        cout << '\n';
+    }
+    /*
+    for (i=0; i<N; i++) {
+        scanf("%s", name);
+        printf("%s %ld", name, m[getid(name)].size());
+        for (int x: m[getid(name)])
+            printf(" %d", x);
+        printf("\n");
+    }
+    */
+}
+```
+
+
+## 1062 Talent and Virtue (25 分)
+
+1. 多个容器，每个容器存放一个类别的数据。
+2. 输入时过滤不合格的数据项。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <vector>
+using namespace std;
+
+struct Record {
+    int id, talent, virtue, total; // 缓存一个总分，避免排序时反复计算。
+    Record(int i, int t, int v): id(i), talent(t), virtue(v), total(t+v) {}
+};
+
+// 4个类别。
+vector<Record> records[4];
+
+int N, L, H, i, n, id, talent, virtue;
+
+bool cmp(const Record& a, const Record& b) {
+    // If there is a tie of the total grade, they must be ranked with respect to their virtue grades in non-increasing order.
+    // If there is still a tie, then output in increasing order of their ID's.
+    if (a.total != b.total) return a.total > b.total;
+    // 总分相同按virtue升序排序。
+    if (a.virtue != b.virtue) return a.virtue > b.virtue;
+    // virtue相同按talent升序排序。
+    // 错误，总分相同，virtue相同，那么talent必然相同。只能按id降序排序。
+    return a.id < b.id;
+}
+
+int main() {
+    scanf("%d %d %d", &N, &L, &H);
+    for (n=i=0; i<N; i++) {
+        scanf("%d %d %d", &id, &virtue, &talent);
+        if (talent<L || virtue<L) continue;
+        n++;
+        if (talent>=H && virtue>=H) records[0].push_back(Record(id, talent, virtue));
+        else if (virtue>=H) records[1].push_back(Record(id, talent, virtue));
+        else if (talent<=virtue) records[2].push_back(Record(id, talent, virtue));
+        else records[3].push_back(Record(id, talent, virtue));
+    }   
+    printf("%d\n", n);
+    for (i=0; i<4; i++) {
+        sort(records[i].begin(), records[i].end(), cmp);
+        for (auto& r: records[i])
+            printf("%d %d %d\n", r.id, r.virtue, r.talent);
+    }
+}
+```
+
+
+## 1071 Speech Patterns (25 分)
+
+1. <cctype>
+
+int isalnum(int c);
+int isalpha(int c);
+int isdigit(int c);
+int isxdigit(int c); // 查看是否为16进制数字字符。
+int isascii(int c);
+
+int iscntrl(int c); // 是否是一个控制字符。
+
+int isgraph(int c); // 是否可打印，除了空白符。
+int isprint(int c); // 类似isgraph，但包含空白符。
+int ispunct(int c);
+
+int isupper(int c);
+int islower(int c);
+
+int isblank(int c);
+int isspace(int c);
+
+// 转换大小写。
+int toupper(int c);
+int tolower(int c);
+
+```cpp
+#include <string>
+#include <iostream>
+#include <cctype>
+#include <map>
+using namespace std;
+
+string line, s;
+
+map<string, int> count;
+
+int max_;
+
+int main() {
+    getline(cin, line); // 一次性读入一整行。
+    for (char c: line) { // 逐个字符处理。
+        if (isalnum(c)) {
+            // 累积。
+            s += tolower(c); // 大小写不敏感，统一转换为小写。
+        } else if (!s.empty()) {
+            count[s]++; // 如果不存在就会创建pair，而std::pair会对int进行值初始化，为0，而不是未定义的值，所以可以直接这么做。
+            s.clear();
+        }
+        // else 不是[0-9 A-Z a-z]，且不是跟在一个单词后面的，跳过。
+    }
+	// 可能以单词结尾。
+    if (!s.empty())
+        count[s]++;
+    // std::map是有序容器，这里它会自动按string的字典序递增组织pair。
+    for (const auto& p: count) {
+        if (p.second > max_) { // 配合这里用>而不是>=，就可以确保有多个可能结果时，选择字典序最小的那一个。
+            max_ = p.second;
+            s = p.first;
+        }
+    }
+    cout << s << ' ' << max_ << endl;
+}
+```
+
+
+## 1075 PAT Judge (25 分)
+
+1. 注意，The ranklist must be printed in non-decreasing order of the ranks. For those who have the same rank, users must be sorted in nonincreasing order **according to the number of perfectly solved problems**. 是得满分的问题的数量，而不是得满分的问题的ID！区别 the number of 和 the id of。
+2. 没提交过的和提交没过编译的统统放后面去。这一步是必要的，因为提交但没过编译的和提交过编译的0分的，两者的totalScore都是0，也就是它们会按照userID排序，那么若没有这一步，后面打印rank时，用`if (a[i].show == 0) continue;`就会出错，比如1007是前者，1009是后者，由于循环变量i改变了，那么rank就会出现断层！**或者i只做循环变量，再用另一个变量做计数器**。
+3. 这道题值得好好看一下。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+struct Node {
+    int id;
+    int scores[6]; // problem id从1开始。
+    int totalScore;
+    int nPerfectlySolvedProblems;
+    int show; // 没提交过或提交了但都没过编译的不打印，但提交了过编译得零分的要打印。
+    Node() {
+        for (int i=0; i<6; i++)
+            scores[i] = -1;
+    }
+};
+
+// 用户ID从1开始。
+// 全局变量，没被ctor初始化的字段默认初始化为0。
+Node a[10001];
+
+int fullScores[6];
+
+int i, j, N, K, M, userID, problemID, score, rank_;
+
+bool cmp(const Node& a, const Node& b) {
+    if (a.show != b.show) return a.show > b.show; // XXX 没提交过的和提交没过编译的统统放后面去。这一步是必要的，
+    if (a.totalScore != b.totalScore) return a.totalScore > b.totalScore;
+    if (a.nPerfectlySolvedProblems != b.nPerfectlySolvedProblems) return a.nPerfectlySolvedProblems > b.nPerfectlySolvedProblems;
+    return a.id < b.id;
+}
+
+int main() {
+    scanf("%d %d %d", &N, &K, &M);
+    for (i=1; i<=K; i++)
+        scanf("%d", fullScores+i);
+    for (i=0; i<M; i++) { // M条提交记录。
+        scanf("%d %d %d", &userID, &problemID, &score);
+        a[userID].id = userID;
+        if (score == -1) { // 提交了但没过编译。
+            if (a[userID].scores[problemID] == -1)
+                a[userID].scores[problemID] = 0; // 标记一下，提交了但没过编译的成绩是0。
+            continue;
+        }
+        // 提交了且过编译。
+        if (a[userID].scores[problemID]==-1 || a[userID].scores[problemID]<score) {// 短路操作，当判断第二个条件时，隐含地第一个条件不满足，即`a[userID].score[problemID]!=-1`。
+            // 第二个条件表示同一个用户对同一个问题的多次提交中，取得分最高的那次提交。
+            if (a[userID].scores[problemID] != -1)
+                a[userID].totalScore -= a[userID].scores[problemID];
+            a[userID].totalScore += score;
+            a[userID].scores[problemID] = score;
+            if (score == fullScores[problemID])
+                a[userID].nPerfectlySolvedProblems++;
+            a[userID].show = 1;
+            
+        }
+    }
+    // 也可以放到外面计算总分。
+    /*
+    for (i=1; i<=N; i++) {
+        for (j=1; j<=K; j++) {
+            if (a[i].scores[j] == -1) continue;
+            a[i].totalScore += a[i].scores[j];
+            if (a[i].scores[j] == fullScores[j]) a[i].nPerfectlySolvedProblems++;
+        }
+    }
+    */
+    sort(a+1, a+1+N, cmp);
+	a[0].totalScore = a[1].totalScore;
+    for (rank_=i=1; i<=N; i++) {
+        /*
+        // 这个判断是错误的，提交了过了编译但得0分的要打印。
+        if (a[i].totalScore == 0)
+            break;
+        */
+        if (a[i].show == 0)
+            break;
+        if (a[i].totalScore != a[i-1].totalScore) rank_=i;
+        printf("%d %05d %d", rank_, a[i].id, a[i].totalScore);
+        for (j=1; j<=K; j++) {
+            if (a[i].scores[j] == -1)
+                printf(" -");
+            else
+                printf(" %d", a[i].scores[j]);
+        }
+        printf("\n");
+    }
+}
+```
+
+
+## 1077 Kuchiguse (20 分)
+
+1. 看准，case sensitive是大小写敏感，而不是不敏感。
+2. 注意处理line的长度比之前的line的公共后缀还要短的情况。
+3. 注意吸收掉换行符，可以用`scanf("%d\n")`，或者`cin>>N; getchar();`。
+4. 可以优化，但没必要。
+5. 有空格/空白符，用getline。
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+string line, s;
+
+int main() {
+	int N, i, j, k, x;
+    // cin >> N;
+    scanf("%d\n", &N);
+    getline(cin, line);
+    s = line;
+    for (i=1; i<N; i++) {
+        getline(cin, line);
+        for (k=s.size()-1, j=line.size()-1; j>=0 && k>=0; j--, k--) {
+            if (line[j] != s[k]) {
+                s = s.substr(k+1);
+				// x = k+1; // 可以优化，但没必要。
+                break;
+            }
+        }
+        // line的长度比之前的line的公共后缀还要短的情况。
+        if (j<0 && k>=0)
+            s = s.substr(k+1);
+			// x = k+1;
+    }
+    if (s.empty())
+        cout << "nai" << endl;
+    else
+        cout << s << endl;
+}
+```
+
+
+## 1080 Graduate Admission (30 分)
+
+1. application, 不只是应用的意思，还有申请的意思。applicant则是申请人的意思。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <unordered_map>
+using namespace std;
+
+int N, M, K;
+
+struct Applicant {
+    int id;
+    int Ge, Gi;
+    double Gf;
+    vector<int> applications;
+    Applicant(): applications(K) {}
+};
+
+struct School {
+    int quota;
+    vector<int> admitted;
+};
+
+bool cmp(const Applicant& a, const Applicant& b) {
+    if (a.Gf != b.Gf) return a.Gf>b.Gf;
+    // if (a.Ge != b.Ge) return a.Ge>b.Ge;
+    return a.Ge>b.Ge;
+}
+
+unordered_map<int, int> idx;
+
+int main() {
+    int i, j;
+    scanf("%d %d %d", &N, &M, &K);
+    vector<Applicant> applicants(N);
+    vector<School> schools(M);
+    for (i=0; i<M; i++)
+        scanf("%d", &schools[i].quota);
+    for (i=0; i<N; i++) {
+        scanf("%d %d", &applicants[i].Ge, &applicants[i].Gi);
+        applicants[i].id = i;
+        applicants[i].Gf = (applicants[i].Ge+applicants[i].Gi)*1.0/2;
+        for (j=0; j<K; j++) {
+            scanf("%d", &applicants[i].applications[j]);
+        }
+    }
+    sort(applicants.begin(), applicants.end(), cmp);
+    for (i=0; i<N; i++)
+        idx[applicants[i].id] = i;
+    for (i=0; i<N; i++) {
+        for (int school: applicants[i].applications) {
+            if (schools[school].quota > 0) {
+                schools[school].quota--;
+                schools[school].admitted.push_back(applicants[i].id);
+                break;
+            } else {
+                int y = idx[schools[school].admitted.back()];
+                if (applicants[y].Gf==applicants[i].Gf && applicants[y].Ge==applicants[i].Ge) {
+                    // rank相等，那么该学校即使名额满了，也要收这个学生。
+                    schools[school].admitted.push_back(applicants[i].id);
+                    break;
+                }
+            }
+        }
+    }
+    for (i=0; i<M; i++) {
+        if (schools[i].admitted.empty()) {
+            printf("\n");
+        } else {
+            sort(schools[i].admitted.begin(), schools[i].admitted.end());
+            printf("%d", schools[i].admitted[0]);
+            for (j=1; j<schools[i].admitted.size(); j++)
+                printf(" %d", schools[i].admitted[j]);
+            printf("\n");
+        }
+    }
+}
+```
+
+
+## 1095 Cars on Campus (30 分)
+
+1. 接受输入，第一次先按对分类并按时间排序，挑出有效的记录，然后不按对分类了，直接按时间排序。然后遍历处理查询。注意到，由于查询的时间是升序的，所以可以在上一次查询的结果上继续计算。
+2. 注意输出格式，小时、分钟、秒不足两位，补零。
+3. 值得好好看看。
+
+```cpp
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <map>
+using namespace std;
+
+struct Record {
+    string plateNO;
+    int time;
+    bool in;
+    Record() { plateNO.resize(8); }
+};
+
+map<string, int> howLong; // 某辆车的停车时间，XXX 注意某辆车可能多次进出，要累加起来。
+
+int N, K, hh, mm, ss, nValid, time_, cnt, maxTime;
+
+char status[4]; // 多一个字节存储'\0'。
+char plateNO[8];
+
+Record input[10000], valid[10000];
+
+bool cmp1(const Record& a, const Record& b) {
+    // XXX 先分类。
+    if (a.plateNO != b.plateNO) return a.plateNO<b.plateNO; // 对id进行分类，使得相同id的记录排在一起。
+    // 相同id的记录再按照时间升序排序。
+    return a.time < b.time;
+}
+
+bool cmp2(const Record& a, const Record& b) {
+    return a.time < b.time;
+}
+
+int main() {
+    int i, j;
+    scanf("%d %d", &N, &K);
+    for (i=0; i<N; i++) {
+        scanf("%s %d:%d:%d %s", plateNO, &hh, &mm, &ss, status);
+        input[i].plateNO = plateNO;
+        input[i].time = hh*3600+mm*60+ss;
+        input[i].in = status[0]=='i'? true: false;
+    }
+    sort(input, input+N, cmp1);
+    // 先筛选，挑选出有效的记录，即配对的记录，若有四条记录i1, i2, o1, o2，则选择i2, o1为有效记录，它们相邻。
+    for (i=1; i<N; i++) {
+        if (input[i].plateNO==input[i-1].plateNO && input[i-1].in==true && input[i].in==false) { // 一进一出。
+            valid[nValid++] = input[i-1];
+            valid[nValid++] = input[i];
+            howLong[input[i].plateNO] += input[i].time-input[i-1].time;
+            maxTime = max(maxTime, howLong[input[i].plateNO]);
+            i++;
+        }
+    }
+    sort(valid, valid+nValid, cmp2);
+    j = cnt = 0;
+    for (i=0; i<K; i++) {
+        scanf("%d:%d:%d", &hh, &mm, &ss);
+        time_ = hh*3600+mm*60+ss;
+        for (; j<nValid && valid[j].time<=time_; j++) { // XXX 从上一次搜索停下来的地方继续搜索。
+            if (valid[j].in) cnt++; // 进入停车。
+            else cnt--; // 离开。
+        }
+        printf("%d\n", cnt);
+        // cnt不置零。
+    }
+    for (const auto& p: howLong) { // std::map默认按字典序升序维护pair。
+        if (p.second == maxTime)
+            printf("%s ", p.first.c_str());
+    }
+    // 一小时有3600秒，除以3600，获得小时数；一分钟有60秒，除以60，得到分钟数，模60，得到去掉小时数剩下的分钟数。
+    printf("%02d:%02d:%02d\n", maxTime/3600, maxTime/60%60, maxTime%60);
+}
+```
+
+
+## 1121 Damn Single (25 分)
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <map>
+using namespace std;
+
+int N, M;
+
+map<int, bool> a;
+
+vector<pair<int, int>> couples;
+
+int main() {
+    int i, id, cnt;
+    scanf("%d", &N);
+    couples.resize(N);
+    for (i=0; i<N; i++)
+        scanf("%d %d", &couples[i].first, &couples[i].second);
+    scanf("%d", &M);
+    for (i=0; i<M; i++) {
+        scanf("%d", &id);
+        a[id] = true; // 以id作为键/下标。
+    }
+    // 去掉客人中结对出现的，这就是为什么要用map而不用vector的原因，因为要快速查找，随机访问。
+    cnt = M;
+    for (i=0; i<N; i++) {
+        if (a[couples[i].first] && a[couples[i].second]) {
+            a[couples[i].first] = a[couples[i].second] = false;
+            cnt -= 2;
+        }
+    }
+    printf("%d\n", cnt);
+    bool flag = true;
+    for (const auto& p: a) {
+        if (p.second) {
+            if (flag) {
+                printf("%05d", p.first);
+                flag = false;
+            } else {
+                printf(" %05d", p.first);
+            }
+        }
+    }
+    // 如果cnt为0，再换行就会格式错误。所以干脆不再换行。
+    // printf("\n");
+}
+```
+
+
+## 1137 Final Grading (25 分)
+
+1. 开头可能会有一些比较重要的句子，可能看到后面容易忘，这点要注意。
+2. **因为map默认是按键排序的，所以用map<string, Node>，然后实现Node的<运算符，并没有用**。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <string>
+#include <unordered_map>
+using namespace std;
+
+struct Node {
+    string id;
+    int Gp, Gmid, Gfinal, G;
+    // If some score does not exist, output "−1" instead.
+    // XXX 这是指没有输入，如果输入的成绩是0，那么也算存在。所以不能将0作为特殊值。
+    // Node(): Gp(0), Gmid(0), Gfinal(0), G(0) {}
+    Node(): Gp(-1), Gmid(-1), Gfinal(-1), G(-1) {}
+};
+
+char id[21]; // 多一个字节存储'\0'。
+
+unordered_map<string, int> idx; // 记录id对应的结构体在数组中的下标。
+
+// 从1开始存储，因为map创建的pair的int类型的value部分值初始化为0。
+Node a[30001];
+
+bool cmp(const Node& a, const Node& b) {
+    if (a.G != b.G) return a.G>b.G;
+    return a.id<b.id;
+}
+
+// to be qualified for a certificate, he/she must first obtain no less than 200 points
+// from the online programming assignments, and then receive a final grade no less than 60 out of 100.
+int main() {
+    int P, N, M, i, n=1, x;
+    scanf("%d %d %d", &P, &M, &N);
+    for (i=0; i<P; i++) {
+        scanf("%s %d", id, &x);
+        if (x < 200)
+            continue;
+        a[n].id = id;
+        a[n].Gp = x;
+        idx[string(id)] = n;
+        n++;
+    }
+    for (i=0; i<M; i++) {
+        scanf("%s %d", id, &x);
+        if (idx[string(id)] == 0)
+            continue;
+        a[idx[string(id)]].Gmid = x;
+    }
+    for (i=0; i<N; i++) {
+        scanf("%s %d", id, &x);
+        // 这里并没有像第一个循环那样在这里检测期末成绩是否符合标准，不符合则不插入/更新。
+        // 因为可能不符合，但这个记录已经在数组中了，删除它会比较麻烦，所以干脆只更新/插入，
+        // 等到输出时再排除不符合的结点。（不在排序时，因为这也比较麻烦）
+        if (idx[string(id)] == 0)
+            continue;
+        a[idx[string(id)]].Gfinal = x;
+    }
+    // 计算出最终成绩。
+    for (i=0; i<n; i++) {
+        if (a[i].Gmid<=a[i].Gfinal && a[i].Gfinal!=-1) {
+            a[i].G = a[i].Gfinal;
+        } else {
+            // XXX G must be rounded up to an integer.
+            a[i].G = (int)(a[i].Gmid*0.4 + a[i].Gfinal*0.6 + 0.5);
+        }
+    }
+    sort(a, a+n, cmp);
+    for (i=0; i<n; i++) {
+        // to be qualified for a certificate,
+        // he/she must first obtain no less than 200 points from the online programming assignments,
+        // and then receive a final grade no less than 60 out of 100.
+		// 开头可能会有一些比较重要的句子，可能看到后面容易忘，这点要注意。
+        if (a[i].Gp<200 || a[i].G<60) // 过滤不合格的记录。
+            continue;
+        printf("%s %d %d %d %d\n", a[i].id.c_str(), a[i].Gp, a[i].Gmid, a[i].Gfinal, a[i].G);
+    }
+}
+```
+
+
+## 1149 Dangerous Goods Packaging (25 分)
+
+1. 如果该物品的不相容列表不为空，则将不相容的物品ID用unordered_map标记一下，之后如果该货物列表出现这些物品，则该货物列表不能打包到一起。
+
+```cpp
+#include <iostream>
+#include <unordered_map>
+#include <vector>
+using namespace std;
+
+unordered_map<int, vector<int>> incompatible;
+
+unordered_map<int, bool> book;
+
+int goods[1000];
+
+int main() {
+    int N, M, K, x, y, i;
+    bool flag;
+    scanf("%d %d", &N, &M);
+    for (i=0; i<N; i++) {
+        scanf("%d %d", &x, &y);
+        incompatible[x].push_back(y);
+        incompatible[y].push_back(x);
+    }
+    while (M--) {
+        scanf("%d", &K);
+        for (i=0; i<K; i++)
+            scanf("%d", goods+i);
+        flag = true;
+        book.clear(); // 多次查询，记得重置一些变量，避免影响到下一次查询。
+        for (i=0; i<K; i++) {
+            if (book[goods[i]]) {
+                flag = false;
+                break;
+            }
+            if (!incompatible[goods[i]].empty()) {
+                for (int x: incompatible[goods[i]])
+                    book[x] = true;
+            }
+        }
+        if (flag)
+            printf("Yes\n");
+        else
+            printf("No\n");
+    }
+}
+```
+
+
+## 1153 Decode Registration Card of PAT (25 分)
+
+1. 第二份是大佬的代码，没有作预处理，在查询时，直接遍历。
+2. 不管那一类查询，只要结果为空，就要打印NA。
+3. 遇到预处理比较难做的，要不就干脆在查询时遍历吧。
+
+```cpp
+#include <iostream>
+#include <unordered_map>
+#include <algorithm>
+#include <vector>
+using namespace std;
+
+struct Node {
+    string code;
+    int score;
+    Node(string& c, int s): code(c), score(s) {}
+};
+
+unordered_map<char, int> levelIDX{{'B', 0}, {'A', 1}, {'T', 2}};
+
+vector<Node> records[3]; // 按level组织记录。
+
+unordered_map<string, pair<int, int>> type2; // 按site统计总测试数和总分。
+
+unordered_map<string, unordered_map<string, int>> type3; // 按日期，按site输出测试总数。
+
+unordered_map<string, vector<pair<string, int>>> newType3; // 按日期，按site输出测试总数。
+
+bool cmp(const Node& a, const Node& b) {
+    if (a.score != b.score) return a.score>b.score;
+    return a.code<b.code;
+}
+
+bool cmp2(const pair<string, int>& a, const pair<string, int>& b) {
+    if (a.second != b.second) return a.second>b.second;
+    return a.first<b.first;
+}
+
+int main() {
+    int N, M, i, score, type;
+    string code, site, date;
+    char c;
+    scanf("%d %d", &N, &M);
+    for (i=0; i<N; i++) {
+        cin >> code >> score;
+        site = code.substr(1, 3);
+        date = code.substr(4, 6);
+        records[levelIDX[code[0]]].emplace_back(code, score);
+        type2[site].first++; // 因为value会值初始化为0，所以这里可以不用先检查pair是否存在，不存在再创建。
+        type2[site].second += score;
+        type3[date][site]++;
+    }
+    for (i=0; i<3; i++)
+        sort(records[i].begin(), records[i].end(), cmp);
+    for (auto& p1: type3) {
+        for (auto& p2: p1.second)
+            newType3[p1.first].emplace_back(p2.first, p2.second);
+        sort(newType3[p1.first].begin(), newType3[p1.first].end(), cmp2);
+    }
+    for (i=1; i<=M; i++) { // 测试从1开始编号。
+        scanf("%d ", &type); // 要吃掉空格，因为下面可能要接受字符输入。
+        if (type == 1) {
+            scanf("%c", &c);
+            printf("Case %d: %d %c\n", i, type, c);
+			if (!records[levelIDX[c]].empty()) {
+				for (auto& r: records[levelIDX[c]])
+					printf("%s %d\n", r.code.c_str(), r.score);
+			} else
+				printf("NA\n");
+        } else if (type == 2) {
+            cin >> site;
+            printf("Case %d: %d %s\n", i, type, site.c_str());
+            if (type2.find(site) != type2.end())
+                printf("%d %d\n", type2[site].first, type2[site].second);
+            else
+                printf("NA\n");
+        } else {
+            cin >> date;
+            printf("Case %d: %d %s\n", i, type, date.c_str());
+            if (newType3.find(date) != newType3.end()) {
+                for (auto& p: newType3[date])
+                    printf("%s %d\n", p.first.c_str(), p.second);
+            } else 
+                printf("NA\n");
+        }
+    }
+}
+```
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <algorithm>
+using namespace std;
+struct node {
+    string t;
+    int value;
+};
+bool cmp(const node &a, const node &b) {
+    return a.value != b.value ? a.value > b.value : a.t < b.t;
+}
+int main() {
+    int n, k, num;
+    string s;
+    cin >> n >> k;
+    vector<node> v(n);
+    for (int i = 0; i < n; i++)
+        cin >> v[i].t >> v[i].value;
+    for (int i = 1; i <= k; i++) {
+        cin >> num >> s;
+        printf("Case %d: %d %s\n", i, num, s.c_str());
+        vector<node> ans;
+        int cnt = 0, sum = 0;
+        if (num == 1) {
+            for (int j = 0; j < n; j++)
+                if (v[j].t[0] == s[0]) ans.push_back(v[j]);
+        } else if (num == 2) {
+            for (int j = 0; j < n; j++) {
+                if (v[j].t.substr(1, 3) == s) {
+                    cnt++;
+                    sum += v[j].value;
+                }
+            }
+            if (cnt != 0) printf("%d %d\n", cnt, sum);
+        } else if (num == 3) {
+            unordered_map<string, int> m;
+            for (int j = 0; j < n; j++)
+                if (v[j].t.substr(4, 6) == s) m[v[j].t.substr(1, 3)]++;
+            for (auto it : m) ans.push_back({it.first, it.second});
+        }
+        sort(ans.begin(), ans.end(),cmp);
+        for (int j = 0; j < ans.size(); j++)
+            printf("%s %d\n", ans[j].t.c_str(), ans[j].value);
+        if (((num == 1 || num == 3) && ans.size() == 0) || (num == 2 && cnt == 0)) printf("NA\n");
+    }
+    return 0;
+}
+```

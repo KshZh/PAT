@@ -1,0 +1,814 @@
+## 1111 Online Map (30 分)
+
+1. one-way，单向的。
+2. 用dijkstra算法求一条边有多个权的图中的最短路径。
+3. 注意第二个dijkstra求time最小的最短路径，如果有多条，不是取length最小的那条最短路径，而是取结点数最少的那条。所以要用一个新的数组，记住v0->vi的最短路径上，结点的个数。初始化为INT_MAX。
+4. pre数组保存前驱结点，dfs()得到完整路径。
+
+```cpp
+#include <iostream>
+#include <climits>
+#include <vector>
+using namespace std;
+
+struct Weight {
+    int length, time;
+};
+
+// 结点从0开始编号。
+Weight edge[500][500];
+
+int N, M, i, v1, v2, one_way, length, time_, src, dst, bestLength, bestTime;
+
+vector<int> path1, path2;
+
+bool visited[500];
+Weight pathWeight[500]; // path[i]是v0->vi的最短路径长度/时间。
+int pre[500]; // pre[i]是v0->vi的最短路径上，vi的前驱结点。
+
+void dijkstra1() {
+    int min_, v, i, j;
+    pathWeight[src].length = 0;
+    pathWeight[src].time = 0;
+    while (!visited[dst]) {
+        min_ = INT_MAX;
+        v = -1;
+        for (j=0; j<N; j++) {
+            if (!visited[j] && pathWeight[j].length<min_) {
+                min_ = pathWeight[j].length;
+                v = j;
+            }
+        }
+        visited[v] = true;
+        // 考察通过结点v中继，v0到达其它未确定最短路径的结点是否有更短的路径。
+        for (j=0; j<N; j++) {
+            if (!visited[j] && edge[v][j].length!=0) { // 由于一条边一定有length和time两个权，所以只要其中一个存在，就可以确定这条边存在，即另一个权也存在。
+                if (pathWeight[v].length+edge[v][j].length < pathWeight[j].length) {
+                    pathWeight[j].length = pathWeight[v].length+edge[v][j].length;
+                    pathWeight[j].time = pathWeight[v].time+edge[v][j].time;
+                    pre[j] = v;
+                } else if (pathWeight[v].length+edge[v][j].length==pathWeight[j].length && pathWeight[v].time+edge[v][j].time<pathWeight[j].time) {
+                    pathWeight[j].time = pathWeight[v].time+edge[v][j].time;
+                    pre[j] = v;
+                }
+            }
+        }
+    }
+}
+
+// 注意第二个dijkstra求time最小的最短路径，如果有多条，不是取length最小的那条最短路径，而是取结点数最少的那条。
+// 所以要用一个新的数组，记住v0->vi的最短路径上，结点的个数。
+
+int nNode[500];
+
+void dijkstra2() {
+    int min_, v, i, j;
+    pathWeight[src].length = 0;
+    pathWeight[src].time = 0;
+    nNode[src] = 1; // src->src，只有一个结点。
+    while (!visited[dst]) {
+        min_ = INT_MAX;
+        v = -1;
+        for (j=0; j<N; j++) {
+            if (!visited[j] && pathWeight[j].time<min_) {
+                min_ = pathWeight[j].time;
+                v = j;
+            }
+        }
+        visited[v] = true;
+        // 考察通过结点v中继，v0到达其它未确定最短路径的结点是否有更短的路径。
+        for (j=0; j<N; j++) {
+            if (!visited[j] && edge[v][j].time!=0) { // 由于一条边一定有length和time两个权，所以只要其中一个存在，就可以确定这条边存在，即另一个权也存在。
+                if (pathWeight[v].time+edge[v][j].time < pathWeight[j].time) {
+                    pathWeight[j].time = pathWeight[v].time+edge[v][j].time;
+                    // pathWeight[j].length = pathWeight[v].length+edge[v][j].length;
+                    pre[j] = v;
+                    nNode[j] = nNode[v]+1; // XXX
+                // } else if (pathWeight[v].time+edge[v][j].time==pathWeight[j].time && pathWeight[v].length+edge[v][j].length<pathWeight[j].length) {
+                } else if (pathWeight[v].time+edge[v][j].time==pathWeight[j].time && nNode[v]+1<nNode[j]) {
+                    // pathWeight[j].length = pathWeight[v].length+edge[v][j].length;
+                    pre[j] = v;
+                    nNode[j] = nNode[v]+1;
+                }
+            }
+        }
+    }
+}
+
+void dfs1(int v) {
+    if (v != -1) {
+        dfs1(pre[v]); // 先递归到最底部，即递归到src，再从src开始推入path1。
+        path1.push_back(v);
+    }
+}
+
+void dfs2(int v) {
+    if (v != -1) {
+        dfs2(pre[v]);
+        path2.push_back(v);
+    }
+}
+
+int main() {
+    scanf("%d %d", &N, &M);
+    for (i=0; i<M; i++) {
+        scanf("%d %d %d %d %d", &v1, &v2, &one_way, &length, &time_);
+        edge[v1][v2].length = length;
+        edge[v1][v2].time = time_;
+        if (!one_way) {
+            // 双向的边。
+            edge[v2][v1].length = length;
+            edge[v2][v1].time = time_;
+        }
+    }
+    scanf("%d %d", &src, &dst);
+
+    // 应用dijkstra算法前必要的初始化。
+    for (i=0; i<N; i++) {
+        visited[i] = false;
+        pre[i] = -1; // 因为结点从0开始编号，所以0是有效值。
+        pathWeight[i].length = pathWeight[i].time = INT_MAX;
+    }
+    dijkstra1();
+    dfs1(dst);
+    bestLength = pathWeight[dst].length;
+    for (i=0; i<N; i++) {
+        visited[i] = false;
+        pre[i] = -1;
+        pathWeight[i].length = pathWeight[i].time = INT_MAX;
+        // 记得初始化新增的数据结构。
+        nNode[i] = INT_MAX; // XXX
+    }
+    dijkstra2();
+    dfs2(dst);
+    bestTime = pathWeight[dst].time;
+    if (path1 == path2) {
+        printf("Distance = %d; Time = %d: %d", bestLength, bestTime, path1[0]);
+        for (i=1; i<path1.size(); i++)
+            printf(" -> %d", path1[i]);
+    } else {
+        printf("Distance = %d: %d", bestLength, path1[0]);
+        for (i=1; i<path1.size(); i++)
+            printf(" -> %d", path1[i]);
+        printf("\nTime = %d: %d", bestTime, path2[0]);
+        for (i=1; i<path2.size(); i++)
+            printf(" -> %d", path2[i]);
+    }
+}
+```
+
+
+## 1112 Stucked Keyboard (20 分)
+
+1. 字符串处理。
+2. 注意理解题意和条件的选取。
+3. https://www.qingtingip.com/h_257826.html
+
+```cpp
+#include <iostream>
+#include <string>
+#include <vector>
+using namespace std;
+
+int K, i, j;
+
+string line;
+
+vector<char> origin;
+
+vector<char> stuckedKeys;
+
+bool stucked[256];
+
+bool unStucked[256];
+
+int main() {
+    scanf("%d\n", &K);
+    getline(cin, line);
+    // 找出没有坏的按键，寻找连续的相等的字符，当其长度不是k的倍数时（因为坏的键出现一次必然重复K次），按键一定是好的。
+    for (j=1, i=0; i<line.size(); ) {
+        for (; j<line.size() && line[j]==line[i]; j++)
+            ;
+        if ((j-i)%K != 0) { // 右开减左闭等于区间长度。
+            unStucked[line[i]] = true;
+        }
+        // XXX `(j-i)%K == 0`并不能说明这个键就是坏的，也许是恰好多按了K的倍数次。但出现次数不是K的倍数的键一定是好的。
+        i = j;
+    }
+    for (i=0; i<line.size(); ) {
+        origin.push_back(line[i]);
+        if (!unStucked[line[i]]) {
+            if (!stucked[line[i]]) {
+                stuckedKeys.push_back(line[i]); // 避免重复推入。
+                stucked[line[i]] = true;
+            }
+            i += K; // 连续的K次还原为一次。
+        } else
+            i++;
+    }
+    /*
+    for (i=0; i<stuckedKeys.size(); i++)
+        printf("%c", stuckedKeys[i]);
+    printf("\n");
+    */
+    // 因为是vector<char>，所以等价于下面的输出语句。
+    cout << string(stuckedKeys.begin(), stuckedKeys.end()) << endl;
+    cout << string(origin.begin(), origin.end()) << endl;
+}
+
+```
+
+
+## 1113 Integer Set Partition (25 分)
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <cmath>
+using namespace std;
+
+int N, i, sum1, sum2, n1, x, y;
+
+int a[100000];
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%d", a+i);
+    sort(a, a+N);
+    n1 = N/2;
+    for (i=0; i<n1; i++)
+        sum1 += a[i];
+    for (i=n1; i<N; i++)
+        sum2 += a[i];
+    x = abs(sum1-sum2);
+    printf("%d %d\n", abs(N-n1-n1), x);
+}
+```
+
+
+## 1114 Family Property (25 分)
+
+1. 用dfs求子连通图个数最后一个测试会超时。
+2. 不要用这种方式存储，因为输入只给出了该结点的父母和孩子，却没有给出该结点的另一半。如果用邻接表，会导致该结点没有与其妻子/丈夫结点关联起来。
+3. 只有在输入**直接**给出了该结点的所有关联的结点时，才可以用邻接表存储。
+4. 这一题应该用并查集。
+5. 存储输入的N个有权值的结点。无权值的结点只需记录在disjoint中即可。
+6. 输入的结点可能有一些带有权，有一些没有带权。
+7. https://zhuanlan.zhihu.com/p/35314141
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <climits>
+#include <unordered_set>
+#include <algorithm>
+using namespace std;
+
+// 有相同孩子的是夫妻，有关联。
+
+struct Node {
+    int A, M; // 作为全局变量，默认初始化为0，所以不必显式初始化。
+    // vector<int> connection; // 与该结点直接相邻的结点，包括其父母、孩子。
+    // 不要用这种方式存储，因为输入只给出了该结点的父母和孩子，却没有给出该结点的另一半。
+    // XXX 只有在输入**直接**给出了该结点的所有关联的结点时，才可以用邻接表存储。
+};
+
+
+Node a[10000]; // 以结点的ID作为下标，ID是4位数，所以数组大小至少为1e4。
+
+bool edge[10000][10000]; // 用邻接矩阵存储图。
+
+unordered_set<int> nodes; // 自动去重。
+
+int x, y, N, i, ID, nChilds, totalA, totalM, minID, n;
+
+bool visited[10000];
+
+void dfs(int id) {
+    if (id < minID)
+        minID = id;
+
+    totalA += a[id].A;
+    totalM += a[id].M;
+
+    visited[id] = true;
+
+    n++;
+
+    for (auto it=nodes.begin(); it!=nodes.end(); it++) {
+        if (!visited[*it] && edge[*it][id])
+            dfs(*it);
+    }
+}
+
+struct Result {
+    int ID, N;
+    double avgA, avgM;
+    Result(int i, int n): ID(i), N(n) {
+        avgA = totalA*1.0/N;
+        avgM = totalM*1.0/N;
+    }
+};
+
+vector<Result> result;
+
+bool cmp(const Result& a, const Result& b) {
+    if (a.avgA != b.avgA) return a.avgA>b.avgA;
+    return a.ID < b.ID;
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d %d %d %d", &ID, &x, &y, &nChilds);
+        nodes.insert(ID);
+        if (x != -1) {
+            edge[ID][x] = true;
+            edge[x][ID] = true;
+            nodes.insert(x);
+        }
+        if (y != -1) {
+            edge[ID][y] = true;
+            edge[y][ID] = true;
+            nodes.insert(y);
+        }
+        while (nChilds--) {
+            scanf("%d", &x);
+            edge[ID][x] = true;
+            edge[x][ID] = true;
+            nodes.insert(x);
+        }
+        scanf("%d %d", &a[ID].M, &a[ID].A);
+    }
+    for (int id: nodes) {
+        if (!visited[id] && a[id].A != 0) {
+            totalA = totalM = n = 0;
+            minID = INT_MAX;
+            dfs(id);
+            result.emplace_back(Result(minID, n));
+        }
+    }
+    printf("%d\n", result.size());
+    sort(result.begin(), result.end(), cmp);
+    for (auto r: result)
+        printf("%04d %d %.3lf %.3lf\n", r.ID, r.N, r.avgM, r.avgA);
+}
+```
+
+
+```cpp
+#include <iostream>
+#include <algorithm>
+#include <unordered_set>
+using namespace std;
+
+int disjoint[10000];
+// int rank[10000]; // 这里不使用按秩合并。而是按id的大小来的合并，因为题目要求输出每一个集合中最小的id。
+
+void make_set() {
+    for (int i=0; i<10000; i++) {
+        disjoint[i] = i; // 初始时，每个结点是一个帮派/集合。
+        // rank[i] = 0;
+    }
+}
+
+// 查，返回i所属集合/帮派的头目。
+int find(int i) {
+    if (disjoint[i] != i)
+        disjoint[i] = find(disjoint[i]); // 递归，通过i的上级找头目。对disjoint[i]重新赋值，实现路径压缩。
+    return disjoint[i];
+}
+
+// 并，将x和y所属的两个集合并为一个集合，即将一个集合的头目作为另一个集合的头目的手下。
+void union_(int x, int y) {
+    int a = find(x);
+    int b = find(y);
+    if (a < b) // id更小的做老大。
+        disjoint[b] = a;
+    else
+        disjoint[a] = b;
+}
+
+/*
+void union_(int x, int y) {
+    int a = find(x);
+    int b = find(y);
+    if (rank[a] > rank[b]) // 按秩合并。
+        disjoint[b] = a;
+    else {
+        disjoint[a] = b;
+		if (rank[a] == rank[b])
+			rank[b]++;
+	}
+}
+*/
+
+struct Node {
+    int id, M, A;
+};
+
+Node a[1000]; // 存储输入的N个有权值的结点。无权值的结点只需记录在disjoint中即可。
+
+struct Result {
+    int id, N, totalM, totalA;
+    double avgM, avgA;
+    bool flag; // 标记Result数组中的某个slot是否被使用。
+};
+
+Result r[10000]; // 默认初始化，以id作为下标。
+
+int N, id, x, y, i, nChilds, M, A, nSet;
+
+// 自动去重。
+unordered_set<int> ids; // 记录输入数据的所有id，包括没有权值的结点的id。
+
+bool cmp(const Result& a, const Result& b) {
+    if (a.avgA != b.avgA) return a.avgA>b.avgA;
+    return a.id<b.id;
+}
+
+int main () {
+    make_set(); // 记得在main中调用初始化函数。
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d %d %d %d", &id, &x, &y, &nChilds);
+        ids.insert(id);
+        if (x != -1) {
+            union_(x, id);
+            ids.insert(x);
+        }
+        if (y != -1) {
+            union_(y, id);
+            ids.insert(y);
+        }
+        while (nChilds--) {
+            scanf("%d", &x);
+            union_(x, id);
+            ids.insert(x);
+        }
+        scanf("%d %d", &a[i].M, &a[i].A);
+        a[i].id = id;
+    }
+    // 累加每个集合的权值。
+    for (i=0; i<N; i++) {
+        id = find(a[i].id);
+        r[id].id = id;
+        r[id].totalM += a[i].M;
+        r[id].totalA += a[i].A;
+        r[id].flag = true;
+        // r[id].N++; // 这里累计的只是有权值的结点。
+    }
+    // 累计每个集合的结点数。
+    for (auto it=ids.begin(); it!=ids.end(); it++)
+        r[find(*it)].N++;
+    // 累计集合数，并且每个集合的大小已求出，可以求平均值了。
+    for (i=0; i<10000; i++) {
+        if (r[i].flag) {
+            r[i].avgM = r[i].totalM*1.0/r[i].N;
+            r[i].avgA = r[i].totalA*1.0/r[i].N;
+            nSet++;
+        }
+    }
+    sort(r, r+10000, cmp);
+    printf("%d\n", nSet);
+    for (i=0; i<nSet; i++)
+        printf("%04d %d %.3lf %.3lf\n", r[i].id, r[i].N, r[i].avgM, r[i].avgA);
+}
+```
+
+
+## 1115 Counting Nodes in a BST (30 分)
+
+1. end()指向尾后位置，end()-1才是指向最后一个元素。
+
+```cpp
+#include <iostream>
+#include <queue>
+using namespace std;
+
+int N, i, x;
+
+struct Node {
+    int data;
+    Node* left;
+    Node* right;
+    Node(int d): data(d), left(nullptr), right(nullptr) {}
+};
+
+Node* insert(Node* root, int x) {
+    if (root == nullptr) {
+        root = new Node(x);
+    } else if (x <= root->data) {
+        root->left = insert(root->left, x);
+    } else {
+        root->right = insert(root->right, x);
+    }
+    return root;
+}
+
+vector<int> v;
+
+void bfs(Node* tree) {
+    Node* p;
+    int n = 0;
+    queue<Node*> q;
+    q.push(tree);
+    q.push(nullptr);
+    while (!q.empty()) {
+        p = q.front();
+        q.pop();
+        if (p == nullptr) {
+            v.push_back(n); // 推入当前层的结点数。
+            if (q.empty()) // 防止无限循环。
+                break;
+            n = 0;
+            q.push(nullptr); // 下一层的结束标志。
+            continue;
+        }
+        n++; // 在pop()时才更新相关数据。
+        if (p->left)
+            q.push(p->left);
+        if (p->right)
+            q.push(p->right);
+    }
+}
+
+int main() {
+    scanf("%d", &N);
+    Node* tree = nullptr;
+    for (i=0; i<N; i++) {
+        scanf("%d", &x);
+        tree = insert(tree, x);
+    }
+    bfs(tree);
+    int x = *(v.end()-1);
+    int y = *(v.end()-2);
+    printf("%d + %d = %d\n", x, y, x+y);
+}
+```
+
+
+## 1116 Come on! Let's C (20 分)
+
+```cpp
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+int N, K, i, id;
+
+// 排名从1开始编号，第一名。
+int ranks[10001];
+bool exist[10001];
+bool checked[10001];
+
+bool isPrime(int x) {
+    int sq = sqrt(x);
+    for (int i=2; i<=sq; i++)
+        if (x%i == 0)
+            return false;
+    return true;
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=1; i<=N; i++) {
+        scanf("%d", &id);
+        ranks[id] = i;
+        exist[id] = true;
+    }
+    scanf("%d", &K);
+    while (K--) {
+        scanf("%d", &id);
+        if (checked[id]) {
+            printf("%04d: Checked\n", id);
+            continue;
+        }
+        if (!exist[id]) {
+            printf("%04d: Are you kidding?\n", id);
+            continue;
+        }
+        if (ranks[id] == 1) {
+            printf("%04d: Mystery Award\n", id);
+        } else if (isPrime(ranks[id])) {
+            printf("%04d: Minion\n", id);
+        } else {
+            printf("%04d: Chocolate\n", id);
+        }
+        checked[id] = true;
+    }
+}
+```
+
+
+## 1117 Eddington Number (25 分)
+
+1. 没有思路，要不先对输入的非有序序列排一下序试试，再观察一下。
+
+```cpp
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int N, i;
+
+int a[100000];
+
+bool cmp(int a, int b) {
+    return a>b;
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%d", a+i);
+    sort(a, a+N, cmp);
+    for (i=0; i<N; i++) {
+        if (a[i] <= i+1)
+            break;
+    }
+    printf("%d\n", i);
+}
+```
+
+
+## 1118 Birds in Forest (25 分)
+
+1. 要查看有多少个集合，然后给出两个元素，循环它们是否属于同一个集合 =》 并查集。
+2. 记得在main中调用初始化函数，如下面的make_set()函数，否则算法运行出错。
+
+```cpp
+#include <iostream>
+#include <unordered_set>
+using namespace std;
+
+// the birds in all the pictures are numbered continuously from 1 to some number that is no more than 10^4.
+int parent[10001];
+int ranks[10001];
+
+void make_set() {
+    for (int i=0; i<10001; i++) {
+        parent[i] = i; // 初始时每个单位是一个集合。
+        ranks[i] = 0;
+    }
+}
+
+int find(int x) {
+    if (parent[x] != x)
+        parent[x] = find(parent[x]); // 对disjoint[x]重新赋值，路径压缩。
+    return parent[x];
+}
+
+void union_(int x, int y) {
+    int a = find(x);
+    int b = find(y);
+    if (ranks[a] > ranks[b]) { // 按秩合并。
+        parent[b] = a;
+    } else {
+        parent[a] = b;
+        if (ranks[a] == ranks[b])
+            ranks[b]++;
+    }
+}
+
+int N, i, K, x, y;
+
+unordered_set<int> birds;
+unordered_set<int> sets;
+
+int main() {
+    make_set();
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d %d", &K, &x);
+        birds.insert(x);
+        while (--K) {
+            scanf("%d", &y);
+            union_(x, y);
+            birds.insert(y);
+        }
+    }
+    // 统计集合个数。
+    for (auto it=birds.begin(); it!=birds.end(); it++)
+        sets.insert(find(*it));
+    printf("%d %d\n", sets.size(), birds.size());
+    scanf("%d", &N);
+    while (N--) {
+        scanf("%d %d", &x, &y);
+        if (find(x) == find(y))
+            printf("Yes\n");
+        else
+            printf("No\n");
+    }
+}
+```
+
+
+## 1119 Pre- and Post-order Traversals (30 分)
+
+1. 根据先序序列和后序序列，中序遍历获得中序序列。
+2. 如果出现了长度为2的子树，那么这棵树不能唯一确定，因为一个结点可以是另一个结点的左孩子或右孩子，仅靠先序和后序序列无法分辨是哪种情况。
+3. 实现中的in数组可以换成vector，这样不必维护一个全局的p指针。
+4. 最后要打印换行符，不然格式错误。
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int pre[30];
+int post[30];
+int in[30];
+int p, N, i;
+
+bool unique = true;
+
+void inorderTraversal(int preRoot, int postRoot, int len) {
+    if (len <= 0)
+        return;
+    if (len == 2)
+        unique = false;
+    int preLeftSubRoot = preRoot+1;
+    int postRightSubRoot = postRoot-1;
+    int preRrightSubRoot, postLeftSubRoot, leftSubLen, rightSubLen, i;
+    for (i=preLeftSubRoot; i<preRoot+len && pre[i]!=post[postRightSubRoot]; i++)
+        ;
+    preRrightSubRoot = i;
+    leftSubLen = preRrightSubRoot-preLeftSubRoot;
+    rightSubLen = len - leftSubLen - 1; // 减1减去当前根。
+    postLeftSubRoot = postRightSubRoot-rightSubLen;
+
+    inorderTraversal(preLeftSubRoot, postLeftSubRoot, leftSubLen);
+    in[p++] = pre[preRoot];
+    inorderTraversal(preRrightSubRoot, postRightSubRoot, rightSubLen);
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%d", pre+i);
+    for (i=0; i<N; i++)
+        scanf("%d", post+i);
+    inorderTraversal(0, N-1, N);
+    if (unique)
+        printf("Yes\n");
+    else
+        printf("No\n");
+    printf("%d", in[0]);
+    for (i=1; i<N; i++)
+        printf(" %d", in[i]);
+    printf("\n");
+}
+```
+
+
+## 1120 Friend Numbers (20 分)
+
+```cpp
+#include <iostream>
+#include <set>
+using namespace std;
+
+int N, i, x;
+
+/*
+struct cmp {
+    bool operator()(int a, int b) {
+        return a<b;
+    }
+};
+
+// 自定义排序函数的set。只能传入实现()的类类型。
+set<int, cmp> s;
+*/
+
+// set是自动去重和有序的，将数字从小到大排序，将字符串按字母序进行排序。
+set<int> s;
+
+int getSum(int x) {
+    int sum = 0;
+    while (x) {
+        sum += x%10; // %抹除高位，留下低位。
+        x /= 10; // /抹除低位，留下高位。
+    }
+    return sum;
+}
+
+int main() {
+    scanf("%d", &N);
+    for (i=0; i<N; i++) {
+        scanf("%d", &x);
+        s.insert(getSum(x));
+    }
+    printf("%d\n", s.size());
+    i = 0;
+    for (auto it=s.begin(); it!=s.end(); it++, i++) {
+        if (i == 0)
+            printf("%d", *it);
+        else
+            printf(" %d", *it);
+    }
+    printf("\n");
+}
+```
+
