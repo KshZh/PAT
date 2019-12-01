@@ -1,6 +1,7 @@
 ## 7-1 Forever (20 分)
 
 1. dfs+剪支。
+2. the greatest common divisor of m and n is a prime number which is greater than 2. 其中which指代的不是prime number，而是the greatest common divisor of m and n。
 
 ```cpp
 #include <iostream>
@@ -126,7 +127,7 @@ int main() {
         m[addr] = Node(addr, data, next_);
     }
     int p = head1;
-    while (p != -1) {
+    while (p != -1) { // 注意这里不是`while (p)`，在这道题中，0不表示空指针。
         list1.push_back(m[p]);
         p = m[p].next;
     }

@@ -1,0 +1,308 @@
+## 7-1 Sexy Primes (20 分)
+
+1. 仔细理解题目，多检查if, while等条件是否正确。
+
+```cpp
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+bool isPrime(int a) {
+    if (a <= 1)
+        return false;
+    int s = sqrt(a);
+    for (int i=2; i<=s; i++) {
+        if (a%i == 0)
+            return false;
+    }
+    return true;
+}
+
+int main() {
+    int N;
+    int i;
+    cin >> N;
+    bool pN = isPrime(N);
+    bool pN1 = isPrime(N-6);
+    bool pN2 = isPrime(N+6);
+	// if (!pN && !pN1 && !pN2) { // 错误。
+    if (!pN || (!pN1 && !pN2)) { // 条件要写正确。
+        printf("No\n");
+        for (i=N+1; ; i++) {
+            if (isPrime(i) && (isPrime(i-6) || isPrime(i+6))) {
+                printf("%d\n", i);
+                return 0;
+            }
+        }
+        /*
+        while (!isPrime(++N))
+            ;
+        */
+    }
+    printf("Yes\n");
+    if (pN1)
+        printf("%d\n", N-6);
+    else
+        printf("%d\n", N+6);
+}
+```
+
+
+## 7-2 Anniversary (25 分)
+
+```cpp
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <algorithm>
+#include <climits>
+#include <unordered_set>
+using namespace std;
+
+unordered_set<string> alumni;
+
+int main() {
+    int N, M, i, n=0, oldest1=INT_MAX, oldest2=INT_MAX;
+    string s, o1, o2;
+    cin >> N;
+    while (N--) {
+        cin >> s;
+        alumni.insert(s);
+    }
+    scanf("%d", &M);
+    while (M--) {
+        cin >> s;
+        i = stoi(s.substr(6, 8));
+        if (alumni.find(s) != alumni.end()) {
+            n++;
+            if (i < oldest1) {
+                oldest1 = i;
+                o1 = s;
+            }
+        } else if (i < oldest2) {
+            oldest2 = i;
+            o2 = s;
+        }
+    }
+    cout << n << '\n';
+    if (n == 0) {
+        cout << o2 << endl;
+    } else {
+        cout << o1 << endl;
+    }
+}
+```
+
+
+## 7-3 Telefraud Detection (25 分)
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <map>
+using namespace std;
+
+int edge[1010][1010]; // 编号从1开始。
+
+int K, N, M;
+
+vector<int> v;
+
+map<int, vector<int>> m;
+
+int parent[1010];
+
+void make_set() {
+    for (int i=0; i<1010; i++)
+        parent[i] = i;
+}
+
+int find_(int i) {
+    if (parent[i] != i) {
+        parent[i] = find_(parent[i]);
+    }
+    return parent[i];
+}
+
+void union_(int x, int y) {
+    int a = find_(x);
+    int b = find_(y);
+    if (a < b) {
+        parent[b] = a; // ID小的作为头目。
+    } else {
+        parent[a] = b;
+    }
+}
+
+int main() {
+    int i, x, y, z, j;
+    make_set();
+    scanf("%d %d %d", &K, &N, &M);
+    for (i=0; i<M; i++) {
+        scanf("%d %d %d", &x, &y, &z);
+        edge[x][y] += z; // 用+=，而不是=，要累加起来。
+    }
+    int n1, n2, n3;
+    for (i=1; i<=N; i++) {
+        n1 = n2 = n3 = 0;
+        for (j=1; j<=N; j++) {
+            if (j == i)
+                continue;
+            if (edge[i][j] != 0) {
+                n1++;
+                if (edge[i][j] <= 5) {
+                    n2++;
+                    if (edge[j][i] != 0)
+                        n3++;
+                }
+            }
+        }
+        if (n2>K && (n3*1.0/n2)<=0.2) {
+            v.push_back(i);
+        }
+    }
+    if (v.empty()) {
+        printf("None\n");
+        return 0;
+    }
+    /*
+    for (i=0; i<v.size(); i++) {
+        if (v[i] == -1) continue;
+        m[v[i]].push_back(v[i]);
+        for (j=i+1; j<v.size(); j++) {
+            if (v[j]!=-1 && (edge[v[i]][v[j]] && edge[v[j]][v[i]])) {
+                m[v[i]].push_back(v[j]);
+                v[j] = -1;
+            }
+        }
+    }
+    */
+    // 上面这种创建集合的做法是错误的，因为假如一个集合中有多个结点，
+    // 遍历到一个不在集合中的结点，然后该结点与集合中其中一个结点不满足`edge[v[i]][v[j]] && edge[v[j]][v[i]]`，
+    // 但不表示该结点与集合中其它结点就不满足这个条件。
+    // 所以还是要用并查集啊。
+    for (i=0; i<v.size(); i++) {
+        for (j=i+1; j<v.size(); j++) {
+            if (edge[v[i]][v[j]] && edge[v[j]][v[i]]) // 注意不是或，因为题目说：if two suspects are calling each other（彼此）, we say they might belong to the same gang.
+                union_(v[i], v[j]);
+        }
+    }
+    for (int x: v) {
+        m[find_(x)].push_back(x);
+    }
+    for (auto& p: m) {
+        sort(p.second.begin(), p.second.end());
+        printf("%d", p.second[0]);
+        for (i=1; i<p.second.size(); i++)
+            printf(" %d", p.second[i]);
+        printf("\n");
+    }
+}
+```
+
+
+## 7-4 Structure of a Binary Tree (30 分)
+
+1. 用getline前记得吃掉换行符。
+2. sibling，兄弟/姐妹。
+
+```cpp
+#include <iostream>
+#include <unordered_map>
+using namespace std;
+
+int N, M;
+
+int in[31], post[31];
+
+string line;
+
+unordered_map<int, bool> isLeaves; // 没用的，只是不知道siblings的意思，以为是边缘的意思，其实是兄弟/姐妹。
+unordered_map<int, int> level_, parent, leftChild, rightChild;
+
+bool fullTree;
+
+// 后序遍历处理出所有需要的信息。
+int foo(int iStart, int pStart, int len, int level, int p) {
+    if (len <= 0)
+        return -1;
+    int root = post[pStart];
+    int i;
+    for (i=iStart; i<iStart+len && in[i]!=root; i++)
+        ;
+    int leftLen = i-iStart; // 右开减左闭等于区间长度。
+    int rightLen = len - leftLen - 1; // 记得减去根。
+    int leftRoot = foo(iStart, pStart-1-rightLen, leftLen, level+1, root);
+    int rightRoot = foo(i+1, pStart-1, rightLen, level+1, root);
+    level_[root] = level;
+    parent[root] = p;
+    leftChild[root] = leftRoot;
+    rightChild[root] = rightRoot;
+    if (leftRoot==-1 && rightRoot==-1)
+        isLeaves[root] = true;
+    return root;
+}
+
+int main() {
+    int i, x, y, start;
+    char c;
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        scanf("%d", post+i);
+    for (i=0; i<N; i++)
+        scanf("%d", in+i);
+    foo(0, N-1, N, 0, -1);
+    fullTree = true;
+    for (i=0; i<N; i++) {
+        if ((leftChild[in[i]]==-1 && rightChild[in[i]]!=-1) || (leftChild[in[i]]!=-1 && rightChild[in[i]]==-1)) {
+            fullTree = false;
+            break;
+        }
+    }
+    scanf("%d\n", &M); // 用getline前记得吃掉换行符。
+    bool flag;
+    while (M--) {
+        getline(cin, line);
+        flag = false;
+        if (line.back() == 't') {
+            x = stoi(line.substr(0, line.find(" ")));
+            if (parent[x] == -1)
+                flag = true;
+        } else if (line.back() == 's') {
+            x = stoi(line.substr(0, line.find(" ")));
+            start = line.find("d")+2;
+            y = stoi(line.substr(start, line.find("r")-2-start));
+            if (parent[x] == parent[y])
+                flag = true;
+        } else if (line.back() == 'l') {
+            x = stoi(line.substr(0, line.find(" ")));
+            start = line.find("d")+2;
+            y = stoi(line.substr(start, line.find("r")-2-start));
+            if (level_[x] == level_[y])
+                flag = true;
+        } else if (line.back() == 'e') {
+            flag = fullTree;
+        } else {
+            c = line[line.find("e")+2];
+            x = stoi(line.substr(0, line.find(" ")));
+            y = stoi(line.substr(line.find_last_of(" ")));
+            if (c == 'p') {
+                if (parent[y] == x) {
+                    flag = true;
+                }
+            } else if (c == 'l') {
+                if (leftChild[y] == x)
+                    flag = true;
+            } else {
+                if (rightChild[y] == x)
+                    flag = true;
+            }
+        }
+        if (flag) printf("Yes\n");
+        else printf("No\n");
+    }
+}
+```
