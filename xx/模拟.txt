@@ -103,7 +103,7 @@ int main() {
     }
     // XXX 前M*N个客户直接入队，它们直接会进入最短的队列。
     // 注意客户数K可能小于M*N。
-    for (i=1, j=0; i<=M*N && i<=K; i++, j=(j+1)%N) {
+    for (i=1, j=0; i<=M*N && i<=K; i++, j=(j+1)%N) { // 取模循环遍历窗口。
         cus[i].start_ = win[j].time_;
         cus[i].end_ = cus[i].start_ + cus[i].takes_;
         win[j].time_ = cus[i].end_; // 更新窗口的完成时间。
@@ -289,6 +289,8 @@ int main() {
 
 ## 1042 Shuffling Machine (20 分)
 
+1. 奇次数和偶次数，循环轮流使用s和s1，这样就不用反复赋值/拷贝了。
+
 ```cpp
 #include <iostream>
 #include <string>
@@ -307,8 +309,7 @@ int main() {
     int i, j, n;
     scanf("%d", &n);
     for (i=1; i<55; i++) {
-        scanf("%d", &j);
-        a[i] = j;
+        scanf("%d", a+i);
     }
     for (i=0; i<n; i++) {
         for (j=1; j<55; j++) {
@@ -329,7 +330,7 @@ int main() {
 
 ## 1056 Mice and Rice (25 分)
 
-1. 使用同一个数组插入，由于消耗比插入快，所以可以保证不会覆盖未被使用到的信息。
+1. 双指针，使用同一个数组插入，由于消耗比插入快，所以可以保证不会覆盖未被使用到的信息。
 
 ```cpp
 #include <iostream>
@@ -375,7 +376,7 @@ int main() {
                     maxI_ = j;
                 }
             }
-            // 使用同一个数组插入，由于消耗比插入快，所以可以保证不会覆盖未被使用到的信息。
+            // 双指针，使用同一个数组插入，由于消耗比插入快，所以可以保证不会覆盖未被使用到的信息。
             order[k++] = order[maxI_]; // 晋级的player的id。
         }
         n = k; // 新一轮比赛的人数。

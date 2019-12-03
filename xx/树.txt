@@ -145,7 +145,7 @@ int N;
 bool isMirror;
 
 // 对于二叉搜索树，结合二叉搜索树的性质，只需一个前序序列即可得到后序序列，不需要中序序列。
-void postOrderTraversal(int root, int tail) { // 这里也可以传递长度，只不过直接传尾后位置在循环时回方便一点。
+void postOrderTraversal(int root, int tail) { // 这里也可以传递长度，只不过直接传尾后位置在循环时会方便一点。
     int i, j;
     if (!isMirror) {
         for (i=root+1; i<tail && pre[i]<pre[root]; i++)
@@ -178,18 +178,13 @@ int main() {
         postOrderTraversal(0, N);
         if (post.size() != N) {
             printf("NO\n");
-        } else {
-            printf("YES\n");
-            printf("%d", post[0]);
-            for (i=1; i<N; i++)
-                printf(" %d", post[i]);
+			return 0;
         }
-    } else {
-        printf("YES\n");
-        printf("%d", post[0]);
-        for (i=1; i<N; i++)
-            printf(" %d", post[i]);
-    }
+	}
+	printf("YES\n");
+	printf("%d", post[0]);
+	for (i=1; i<N; i++)
+		printf(" %d", post[i]);
 }
 ```
 
@@ -300,7 +295,6 @@ int main() {
 
 ## 1066 Root of AVL Tree (25 分)
 
-
 ```cpp
 #include <iostream>
 #include <vector>
@@ -391,6 +385,7 @@ int main() {
 
 1. 用float可能不够，测试失败可能就是因为这个，可以考虑用double。
 2. 根据题目描述，这是一棵树，所以bfs不需要visited数组。
+3. 注意r是百分数，要转换为小数。
 
 ```cpp
 #include <iostream>
@@ -496,8 +491,8 @@ int main() {
         scanf("%s", cmd);
         if (cmd[1] == 'u') {
             scanf("%d", &x);
-            s.push(x);
             pre.push_back(x);
+			s.push(x);
         } else {
             in.push_back(s.top());
             s.pop();
@@ -641,7 +636,7 @@ void inorderTraversal(int root) {
         inorderTraversal(tree[root].right);
         if (i == 1) {
             printf("%d", root);
-            i++;
+            i++;  // i只是为了控制打印格式。
         } else {
             printf(" %d", root);
         }
@@ -700,7 +695,7 @@ bool pointed[20];
 
 // 遍历输入的树，建立完全二叉搜索树，存储在数组中。
 void traversal(int root, int i) {
-    if (root != -1 && i<=N) {
+    if (root != -1 && i<=N) { // 还要检查`i<=N`，防止`cbst[i]`越界。
         cbst[i] = root;
         traversal(a[root].left, 2*i);
         traversal(a[root].right, 2*i+1);
@@ -1178,6 +1173,8 @@ int main() {
 
 ## 1143 Lowest Common Ancestor (30 分)
 
+1. 遍历先序序列相当于对二叉搜索树进行先序遍历。我们不必先根据输入的先序序列在内存中建树，然后先序遍历这棵树。
+
 ```cpp
 #include <iostream>
 #include <unordered_map>
@@ -1239,7 +1236,7 @@ void postorderTraversal(int root) {
         return;
     postorderTraversal(root*2);
     postorderTraversal(root*2+1);
-    postorder.push_back(cbt[root]);
+    postorder.push_back(cbt[root]); // 也可以用一个全局标记，控制打印格式，从而边遍历边打印，就不用暂存结果然后再打印了。
 }
 
 bool isMaxHeap() {
@@ -1293,14 +1290,14 @@ int main() {
 
 1. 这个思路太强了。如果想不出来，那就用土办法，dfs得到从根到u和v的两条路径，找到两条路径中最后一个相同的结点。（可以用一个数组/map把第一个路径的结点作为key，然后逆序遍历第二条路径，第一个能够在数组/map中找到的结点就是最后一个公共结点了）
 2. 中序序列（左根右）的特点，根的左子树的结点的下标小于根，右子树的结点的下标大于根。由此，通过比较下标，可以很容易确定a是否是u和v的最近公共祖先。
-3. 题目还给出了先序序列（根左右），刚好，我们**遍历先序序列就相当于先序遍历树**，我们从根开始往下搜索，不满足时逐步缩小搜索范围。
+3. 题目还给出了先序序列（根左右），刚好，我们**遍历先序序列就相当于先序遍历树**，我们从根开始往下搜索，不满足时自动逐步缩小搜索范围。
 4. 还有一种就是在内存中建树，然后：
 
 ```cpp
 node* lca(node* root,int x1,int x2){
     if(root==NULL)return NULL;
     if(root->data==x1 || root->data==x2) return root;
-    node* left = lca(root->left,x1,x2);
+    node* left = lca(root->left,x1,x2); // 往该根的两个子树搜索。
     node* right = lca(root->right,x1,x2);
     if(left && right) return root;
     else if(left==NULL) return right;

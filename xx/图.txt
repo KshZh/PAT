@@ -38,7 +38,7 @@ void dijkstra() {
         visited[v] = true;
         // 以v做中继，
         for (i=0; i<N; i++) {
-            if (!visited[i] && edge[v][i]!=0) {
+            if (!visited[i] && edge[v][i]!=0) { // 有边相连很重要，无边相连的话，逻辑上来说，两个互不相关的顶点，没有任何需要/可以处理的。
                 if (dis[v]+edge[v][i] < dis[i]) {
                     dis[i] = dis[v]+edge[v][i];
                     w[i] = w[v]+vertex[i];
@@ -137,7 +137,7 @@ int main() {
         // graph[deleted][j] = false;
         // graph[j][deleted] = false;
         fill(visited.begin(), visited.end(), false);
-        visited[deleted] = true;
+        visited[deleted] = true; // XXX
         // 图的遍历判断连通分量个数。
         for (k=0, j=1; j<=N; j++) {
             if (!visited[j]) {
@@ -182,7 +182,7 @@ int Cm, N, S, M, perfectCond, sum, minNeed=INT_MAX, minBack=INT_MAX;
 
 vector<bool> visited;
 vector<int> dis;
-vector<vector<int>> pre;
+vector<vector<int>> pre; // 因为可能有多个最短路径，所以可能有多个前驱结点，所以这里pre[i]是一个vector。
 
 void dijkstra() {
     int v, min_, i;
@@ -239,7 +239,7 @@ void dfs(int v) {
     // visited[v] = true;
     tempPath.push_back(v);
     // sum += vertexes[v];
-    for (int x: pre[v]) {
+    for (int x: pre[v]) { // 递归调用并不是并行展开的，而是串行展开的，一个完全展开后，返回到这里，再展开另一个分支。
         // if (!visited[x])
             dfs(x);
     }
@@ -269,7 +269,7 @@ int main() {
         edges[u][v] = edges[v][u] = t; // 无向图。
     }
     dijkstra();
-    // fill(visited.begin(), visited.end(), false); // 回溯单源最短路径不需要用到visited，因为保证回溯时不会多次碰到相同的顶点。
+    // fill(visited.begin(), visited.end(), false); // 回溯单源最短路径不需要用到visited，因为保证回溯某一条最短路径时不会多次碰到相同的顶点。
     dfs(S);
     printf("%d 0", minNeed);
     for (i=path.size()-1; i>=0; i--)
@@ -436,7 +436,7 @@ void dijkstra() {
                 // 若到达未确定最短路径集合中的结点i的路径更短，
                 if (d[v].first + graph[v][i].first < d[i].first) {
                     d[i].first = d[v].first + graph[v][i].first;
-                    d[i].second = d[v].second + graph[v][i].second;
+                    d[i].second = d[v].second + graph[v][i].second; // 主权更新了，那么次权也要跟着更新，不论次权是否更优。
                     path[i] = v;
                 // 若到达未确定最短路径集合中的结点i的路径一样长，但cost权更小，
                 } else if (d[v].first + graph[v][i].first == d[i].first) {
@@ -483,7 +483,7 @@ int main() {
 1. 判断连通分量个数可以用并查集或dfs次数（注意判断连通分量的多个dfs之间，不会重复初始化visited数组）。
 2. 这道题用dfs比较容易。
 3. 由于A->B和B->A是不同的，所以这是一张有向图，则graph[v][i]和graph[i][v]是有区别的。
-4. 建立字符串与编号/下标的映射。
+4. 建立字符串与编号/下标的映射。（或者也可以用二维unordered_map，直接用string作为索引）
 5. 顶点A的总的边权在这道题中定义为所有入边的边权与出边的边权的和。
 
 ```cpp
@@ -521,10 +521,11 @@ void dfs(int v) {
             if (!visited[i])
                 dfs(i);
 
-            weightOfV += graph[v][i];
+            weightOfV += graph[v][i]; // 出边的权。
             totalWeight += graph[v][i];
         }
         if (graph[i][v] != 0)
+			// 入边的权。
             weightOfV += graph[i][v]; // 因为边不存在表示为0，所以也可以不用判断直接相加，但判断一下代码更具可读性。
     }
 
@@ -754,11 +755,11 @@ struct City {
     int weight;
 };
 
-City citys[200];
+City citys[200]; // 真正的信息存储。
 
 int edge[200][200];
 
-map<string, int> idx;
+map<string, int> idx; // 编码时普遍使用下标/索引/指针，这里建立从City对象到索引/下标/指针的映射。
 
 int dis[200]; // dis[i]记录v0到vi的最短路径长度，注意，最短路径长度是唯一的。
 bool visited[200];
@@ -851,7 +852,7 @@ struct Point {
     Point() = default;
 };
 
-// 6个方向。
+// 6个方向，6个向量。
 int X[6] = {1, 0, 0, -1, 0, 0};
 int Y[6] = {0, 1, 0, 0, -1, 0};
 int Z[6] = {0, 0, 1, 0, 0, -1};
@@ -886,7 +887,7 @@ int bfs(int x, int y, int z) {
             visited[xx][yy][zz] = true;
         }
     }
-    if (count >= T)
+    if (count >= T) // 超过阈值(threshold)才算。
         return count;
     return 0;
 }
@@ -1330,7 +1331,7 @@ int degree[501]; // 结点编号从1开始。
 // 这里有一个情况是输入的图不连通，那肯定不存在欧拉路或欧拉回路。
 // 注意，单纯判断是否存在度为0的结点无法判断图是否不连通，因为可能一个图存在两个连通分量，但确实没有度为0的结点，即每个连通分量至少有两个或两个以上互连的结点。
 //
-// 判断一个图是否连通，可以用dfs次数，或用并查集查看集合个数。
+// 判断一个图是否连通，可以用dfs次数，或用并查集查看集合个数/看头目个数。
 
 int disjoint[501];
 int rank_[501];
@@ -1394,7 +1395,7 @@ int main() {
 
 ## 1131 Subway Map (30 分)
 
-0. XXX 单源无权最短路径可以用bfs和dfs，因为要记录路径，所以这里用dfs。
+0. XXX 单源无权最短路径可以用bfs和dfs，因为要记录路径，所以这里用dfs。（其实bfs也可以记录路径）
 1. 单个结点可能对应多条线路，单个结点无法唯一确定它所在的路线，如交叉结点，如果两个结点呢？显然，两个结点可以唯一确定一条线路。
 2. 如果可以根据输入获取一个结点关联的所有结点，并且无边权，或者边权都一样，那么就可以考虑用邻接表来存储图。
 3. 如果没有边权和点权，或都相等，那就没必要用dijkstra算法求最短路径了，可直接用dfs。
@@ -1446,13 +1447,13 @@ void dfs(int v) {
         if (path.size()<shortestLen || (path.size()==shortestLen && getTransfer()<minTransfer)) {
             shortest = path;
             shortestLen = shortest.size();
-            minTransfer = getTransfer();
+            minTransfer = getTransfer(); // 主权更新了，那么次权也要更新，不管次权是否会变得更优。
         }
         return;
     }
     if (path.size() >= shortestLen)
         return;
-    visited[v] = true;
+    visited[v] = true; // 要用visited数组记住那些已遍历过，避免走回头路。
     for (int x: graph[v]) {
         if (!visited[x]) {
             path.push_back(x);
@@ -1600,13 +1601,13 @@ int main(){
         vector<pair<int,int> > ans;
         int cnt = 0;
         //从两者的同性人中找
-        for(int i=0;i<G[abs(a)].size();i++){
+        for(int i=0;i<G[abs(a)].size();i++){ // 遍历a的同性朋友，
             int c = G[abs(a)][i];
             if(c == abs(b)) continue;
-            for(int j=0;j<G[abs(b)].size();j++){
+            for(int j=0;j<G[abs(b)].size();j++){ // 遍历b的同性朋友，
                 int d = G[abs(b)][j];
-                if(d == abs(a)) continue;
-                if(re[c][d]){
+                if(d == abs(a)) continue; // 必须经过两个中间人。
+                if(re[c][d]){ // 如果这两个朋友有关系，
                     cnt++;
                     ans.push_back(make_pair(c,d));
                 }
