@@ -515,8 +515,11 @@ int main() {
     sort(s, s+N, cmp);
     for (i=0; i<N; i++)
         result += s[i];
-    while (result.size()!=0 && result[0]=='0') // 跳过前导零。可能不止一个零，所以要用循环。
-        result.erase(result.begin()); // 用erase()删除指定位置的元素。
+    // while (result.size()!=0 && result[0]=='0') // 跳过前导零。可能不止一个零，所以要用循环。
+    //    result.erase(result.begin()); // 用erase()删除指定位置的元素。
+	if ((i=result.find_first_not_of("0")) != 0) {
+        result.erase(0, i);
+    }
     if (result.size() == 0) cout << 0 << endl;
     else cout << result << endl;
 }
@@ -530,7 +533,7 @@ int main() {
 
 对于now，有三种情况：
 1.now == 0 : 那么 ans += left * a; // 因为now==0说明now位只有在left从0~left-1的时候会产生1，所以会产生left次，now每一次出现1，右边会重复从0~999…出现a次（如a=10，则0, 1, 2, 3, 4, 5, 6, 7, 8, 9共10次，10次now为1）
-2.now == 1 : ans += left * a + right + 1;// now = 1的时候就要比上一步多加一个当now为1的时候右边出现0~right个数导致的now为1的次数
+2.now == 1 : ans += left * a + right + 1;// now = 1的时候就要比上一步多加一个当now为1的时候右边出现0~right供right+1个数导致的now为1的次数。
 3.now >= 2 : ans += (left + 1) * a;// now大于等于2就左边0~left的时候会在now位置产生1，所以会产生left+1次，右边会重复从0~999…出现a次（第a次重复到999…后会进位使得now变为2）
 
 ```cpp
@@ -639,7 +642,7 @@ int main() {
 ## 1063 Set Similarity (25 分)
 
 1. 相似度=Nc/Nt。
-2. 先让Nt为其中一个setA的大小，然后遍历另一个setB，出现setA中没有的元素，则`Nt++`，否则`Nc++`。
+2. 先让Nt为其中一个setA的大小，Nc为0，然后遍历另一个setB，出现setA中没有的元素，则`Nt++`，否则`Nc++`。
 
 3
 3 99 87 101
@@ -818,7 +821,6 @@ int main() {
 2. 有序 =》二分查找。
 3. 遇到公式不要慌，好好分析一下有几个变量，确定一个，另外那些是否能确定。
 4. 要乘法不溢出，除了要用更大的类型存储结果外，还要改变操作数的类型。或者一开始就都用比较大的类型存储。
-
 
 ```cpp
 #include <iostream>

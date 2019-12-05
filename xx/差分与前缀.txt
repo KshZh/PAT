@@ -1,7 +1,7 @@
 ## 1044 Shopping in Mars (25 分)
 
 1. 连续子序列和等于某个数的问题，即区间和问题，维护一个前缀和数组s+二分查找即可。（类似的数组有一阶差分数组p）
-2. 知道s数组，可以O(1)求取a数组的区间和。
+2. 知道s数组，可以O(1)求取a数组的区间和。（s[i]-s[j]）
 
 ```cpp
 #include <iostream>
@@ -63,7 +63,7 @@ int main() {
 
 ## 1046 Shortest Distance (20 分)
 
-1. 知道s数组，可以O(1)求取a数组的区间和。
+1. 知道s数组，可以O(1)求取a数组的区间和。（s[i]-s[j]）
 
 ```cpp
 #include <iostream>

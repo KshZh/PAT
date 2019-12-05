@@ -226,7 +226,7 @@ int main() {
 
 1. 这道题值得好好看下。
 2. set自动去重加排序，当类型为自定义结构体时，结构体就要实现<运算符，这样set才知道怎么帮我们的结构体对象排序。
-3. set的有序是在插入时维护的，set用红黑树实现，插入的时间复杂度是O(logn)，比排序函数一般的O(nlogn)小。删除、查找的时间复杂度也是O(logn)，删除单个元素的时间复杂度是O(1)。
+3. set的有序是在插入时维护的，set用红黑树实现，插入的时间复杂度是O(logN)，比排序函数一般的O(NlogN)小。删除、查找的时间复杂度也是O(logN)，删除单个元素的时间复杂度是O(1)。
 4. 如果用vector+sort，就会超时。
 
 ```cpp
@@ -262,7 +262,7 @@ int main() {
         for (it=s.begin(), j=0; j<K && it!=s.end(); j++, it++)
             printf(" %d", it->key);
         printf("\n");
-        if ((it=s.find(Node(x, frequence[x]))) != s.end())
+        if ((it=s.find(Node(x, frequence[x]))) != s.end()) // 因为无法对set中的元素赋值，所以只好先删除，再插入更新过的对象。
             s.erase(it);
         frequence[x]++;
         s.insert(Node(x, frequence[x]));
