@@ -43,6 +43,7 @@ bool cmp(const pair<int, int>& a, const pair<int, int>& b) {
 
 vector<pair<int, int>> v;
 
+// 逐位数构造。
 void dfs(int sum, int val, int depth) {
     if (depth>K)
         return;
@@ -264,7 +265,7 @@ bool dijkstra() {
         }
         visited[v] = true;
         for (j=1; j<=Nv; j++) {
-            if (!visited[j] && edge[v][j]) {
+            if (!visited[j] && edge[v][j]) { // 不在已确定最短路径集合中，且有边相连。
                 if (dis[v]+edge[v][j] < dis[j])
                     dis[j] = dis[v]+edge[v][j];
             }

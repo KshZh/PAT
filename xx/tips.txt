@@ -593,3 +593,215 @@ BigInt add(BigInt& x) {
         z.digits[i] = 1;
         z.nDigits++;
     }
+	
+DFS的结构是处理当前结点，递归处理与当前结点“相连”的结点
+
+树的先序、中序、后序都是DFS的一种形式
+
+n0 = n2 + 1。
+
+推导二叉树的一个性质n0 = n2 + 1。
+有n个结点的树，有n-1条边，因为除根以外，每个结点都有一条边指向该结点。
+故有n-1=2*n2+n1。
+联立n=n2+n1+n0，可得。
+
+给定结点数为N的AVL树的最大高度/层数为O(log2N)。O里面的函数log2N是上界。
+如6个结点，最大高度3层，21个结点，最大高度为5层。
+
+BST->Left = Delete(BST->Left, X); // XXX 因为可能改变BST->Left指向另一个结点，所以要对BST->Left重新赋值，这样才能将两个结点连接起来。
+插入也是，还有AVL树的插入操作也是，赋值这一点比较容易忘。
+
+BST = BST->Right; // BST指针指向其右子结点。
+
+// 多轮查询，即使提前知道了答案，也要把当前的输入读完。
+for (; i<N; i++)
+	scanf("%d", &v);
+		
+root->left = insertNode(root->left, key); // 注意这里别忘了接收返回值更新root->left，说不定插入后调整平衡后，左子树的根变了呢。
+root = insertNode(root, x);
+
+哈夫曼树没有度为1的结点。
+n0 = n2 + 1;
+n = n0 + n2;
+
+3. 堆插入的步骤为将元素插入最后，然后上滤到合适位置。
+4. 堆建立可以调用插入操作，时间复杂度O(NlogN)。
+5. 或者先将输入序列放好，然后从最后一个父结点开始，下滤到合适的位置。这样逐步使每一个小的子堆满足最大/最小堆的性质。这个方法是线性时间复杂度。
+
+heapSize--; // 删除堆最底下的那个结点A。
+
+TreeNode* createHuffmanTree() {
+    TreeNode* t;
+    // 哈夫曼树没有度为1的结点，叶子一定是成对出现的。
+    while (heapSize > 1) {
+        // 哈夫曼树的建立过程就是每次选择最小的两个子树合并。
+        t = new TreeNode(); // 下面这部分可以放在构造函数中。
+        t->left = deleteMin();
+        t->right = deleteMin();
+        t->weight = t->left->weight + t->right->weight;
+        insert(t);
+    }
+    return deleteMin();
+}
+
+priority_queue<TreeNode*, vector<TreeNode*>, decltype(cmp)> q(cmp);
+
+用一维数组压缩存储无向图的邻接矩阵，那么第ij个顶点的下标是i*(i-1)/2 + j，ij均从0开始。（三角形面积加j）
+
+diameter，直径，radius，半径。
+
+void folyd() {
+    int i, j, k;
+    for (i=1; i<=N; i++) {
+        for (j=1; j<=N; j++) {
+            if (graph[i][j] != 0)
+                D[i][j] = graph[i][j];
+            else
+                D[i][j] = INT_MAX/2; // XXX 不能用INT_MAX，否则下面相加会溢出，从而错误地满足条件。
+        }
+    }
+    // 从D^1到D^N，遍历每一个中继点k。
+    // 状态转移方程：D[i][j] = min(D[i][k]+D[k][j], D[i][j])。
+    for (k=1; k<=N; k++) {
+        for (i=1; i<=N; i++) {
+            for (j=1; j<=N; j++) {
+                if (D[i][k]+D[k][j] < D[i][j]) {
+                    D[i][j] = D[i][k]+D[k][j];
+                }
+            }
+        }
+    }
+}
+
+void bfs() {
+    int i, v;
+    queue<int> q;
+	// 可能有多个起点，扫描一遍，把这些起点都入队。
+    for (i=1; i<=N; i++) {
+        if (firstReachable(i)) {
+            q.push(i);
+            visited[i] = true; // 一定要在push()时更新visited，不能在pop()时更新，否则会推入已推入过的顶点。
+            pre[i] = 0;
+        }
+    }
+    while (!q.empty()) {
+        v = q.front();
+        q.pop();
+        if (abs(vertexes[v].first)+D>=50 || abs(vertexes[v].second)+D>=50) {
+            bestDst = v;
+            return;
+        }
+        for (i=1; i<=N; i++) {
+            if (!visited[i] && reachable(v, i)) {
+                q.push(i);
+                visited[i] = true;
+                pre[i] = v; // 记录前驱顶点，以便回溯出完整路径。
+            }
+        }
+    }
+}
+
+// XXX If there are many shortest paths, just output the one with the minimum first jump, which is guaranteed to be unique. 所以先对输入序列排序，再BFS/DFS。
+sort(vertexes.begin()+1, vertexes.end(), cmp);
+	
+主要的权相等，次要的权更小，才更小次要的权，否则不需要做什么。千万不要看到主要的权相等，就不管三七二十一更新次要的权。
+
+```
+其他类似问题
+ 要求数最短路径有多少条
+ count[s] = 1;
+ 如果找到更短路：count[W]=count[V];
+ 如果找到等长路：count[W]+=count[V];
+ 要求边数最少的最短路
+ count[s] = 0;
+ 如果找到更短路：count[W]=count[V]+1;
+ 如果找到等长路：count[W]=count[V]+1;
+```
+
+1. 最小生成树，可用prim算法或kruskal算法。
+2. prim算法和dijkstra算法很像，但要注意区别，前者的`dist[i]`表示未在MST中的顶点i到MST（中的顶点）的最小距离，后者的`dist[i]`表示从原点v到vi的最短路径。所以更新这些数据结构时也有区别。
+
+bool topSort() {
+    int i, v, cnt=0;
+    queue<int> q;
+    // XXX 把所有入度为0的顶点入队。不要下意识地以为入度为0的顶点只有一个。
+    for (i=0; i<N; i++) {
+        if (indegree[i] == 0) {
+            q.push(i);
+            earliest[i] = 0;
+        }
+    }
+    while (!q.empty()) {
+        v = q.front();
+        q.pop();
+        cnt++;
+		// 处理邻接的边/活动。
+        for (const auto& p: graph[v]) {
+            earliest[p.first] = max(earliest[p.first], earliest[v]+p.second);
+            indegree[p.first]--; // 删去这条边。
+            if (indegree[p.first] == 0) { // 没有边指向顶点p.first时，该顶点的最早完成时间才确定，才将该顶点入队。
+                q.push(p.first);
+            }
+        }
+    }
+    return cnt==N; // 通过这一个判断可以判断该图是否是有向无环图。
+}
+
+// 有多个起点，并不意味着有多个连通分量。
+
+void heapSort(vector<int>& nums) {
+    // 完全二叉树用数组存储，从1开始存储，不然2*i会失效，虽然也可以用2*i+1, 2*i+2，但不直观，且求父结点时，i/2更符合二进制的特点。
+    // 线性时间复杂度建立堆，从最后一个父结点开始，逐步将每个子堆调整为最小堆。
+    int i;
+    for (i=N/2; i>0; i--)
+        percDown(i, nums, N);
+
+    for (i=N; i>1;) {
+        // 注意用循环变量i表示堆的大小的变化。
+        swap(nums[1], nums[i--]); // 每次将最大的元素/堆顶交换到后面去。
+        percDown(1, nums, i); // XXX 注意这里的i已经递减过了，把刚刚交换出去的最大的元素从堆中删除。
+    }
+}
+
+// 下面这个双指针的用法值得学习。
+int partition(vector<int>& nums, int left, int right) {
+    int pivot = nums[right];
+    int i=left-1, j=left;
+    for (; j<right; j++) {
+        if (nums[j] <= pivot) {
+			// i+1指向>pivot的元素，j指向<=pivot的元素。
+            swap(nums[++i], nums[j]);
+        }
+    }
+    swap(nums[right], nums[++i]); // 将主元交换到中间。
+    return i;
+}
+
+A={1, 4, 5, 2, 9, 7}，我想知道元素9的下标，一种方法是遍历，另一种方法是维护一个数组/map, T，其中T[A[i]]=i，那么T[9]就是元素9在A数组中的下标了。
+
+当元素之间有明确的先后关系的时候（也许可以构成DAG），可以考虑是否跟拓扑排序有关，用拓扑排序来生成序列。
+
+哈希：
+// pos = h+i; // 错误。
+// pos = h+i%N; // 错误。
+pos = (h+i)%N;
+
+```cpp
+// A negative integer represents an empty cell in the hash table.
+// 所以不要以为测试样例给出-1，就认定-1表示空位，其实是负数表示空位。
+// if (table[i] != -1)
+if (table[i] >= 0)
+```
+
+// unordered_map<int, bool> isLeaves, level_, parent, leftChild, rightChild; // 错误，不小心就会这么写，实际上它们被期望不全是unordered_map<int, bool>。
+unordered_map<int, bool> isLeaves;
+unordered_map<int, int> level_, parent, leftChild, rightChild;
+
+第二个剪支是最关键的，如果后面剩余的位数全部取9，位数和都无法大于等于m，那么这一分支就可以直接剪掉。
+
+while (p != -1) { // 注意这里不是`while (p)`，在这道题中，0不表示空指针。
+
+// 没有边指向结点i，故结点i是根。
+
+if (!visited[j] && edge[v][j]) { // 不在已确定最短路径集合中，且有边相连。
+
