@@ -209,8 +209,7 @@ int N, M, target, w;
 
 vector<int> path;
 
-
-// 因为是对树的dfs，所以可以不用visited数组，因为树的定义保证了不会访问重复访问到同一个顶点。
+// 因为是对树的dfs，所以可以不用visited数组，因为树的定义保证了不会访问重复访问到同一个顶点。且是单向的图，保证不会走回头路。
 void dfs(int v) {
     w += t[v].weight;
     path.push_back(t[v].weight);
@@ -244,6 +243,7 @@ int main() {
             t[j].childs.push_back(x);
         }
         // XXX 如果没有想到在这里先排序的话，只能先一次dfs整理出/存储所有符合条件的路径，再排序输出。
+		// 这样在深度优先遍历时就能先展开权较大的路径了。
         sort(t[j].childs.begin(), t[j].childs.end(), [](int a, int b){ return t[a].weight>t[b].weight; });
     }
     dfs(0);
@@ -1300,7 +1300,7 @@ node* lca(node* root,int x1,int x2){
     node* left = lca(root->left,x1,x2); // 往该根的两个子树搜索。
     node* right = lca(root->right,x1,x2);
     if(left && right) return root;
-    else if(left==NULL) return right;
+    else if(left==NULL) return right; // right可能也是NULL。
     else return left;
 }
 ```

@@ -372,7 +372,7 @@ int main() {
         union_(u, v);
     }
     for (i=1, j=0; i<=N; i++) {
-        if (parent[i] == i)
+        if (parent[i] == i) // 头目个数/集合个数。
             j++;
     }
     if (j!=1) {
@@ -579,7 +579,7 @@ int main() {
 ## 1072 Gas Station (30 分)
 
 1. 注意仔细看题，理解题意，不要一上来连题意都不理解就马上码代码。
-2. 这道题不能用BFS，因为有边权。
+2. 这道题不能用BFS，因为有边权，单源有权最短路径用dijkstra算法。
 3. 这里有一点非常重要，不要看到样例输入的是一位数，就可以用`u[1]-'0'`或`u[0]-'0'`这种写法转换成数字，要知道这是样例，测试可能有多位数，所以还是用string存储，然后用string::stoi()进行转换。
 
 ```cpp
@@ -879,6 +879,7 @@ int bfs(int x, int y, int z) {
             xx = point.x + X[i];
             yy = point.y + Y[i];
             zz = point.z + Z[i];
+			// 判断是否超出范围。
             if (xx<0 || xx>=L || yy<0 || yy>=M || zz<0 || zz>=N)
                 continue;
             if (visited[xx][yy][zz] || a[xx][yy][zz]==0)
@@ -950,7 +951,7 @@ void init() {
 
 
 // 枚举所有组合，对于一个“因子”，可选，可不选。
-void dfs(int i, int k, int sum_, int factorsSum) {
+void dfs(int i, int k, int sum_, int factorsSum) { // 也可以将sum_参数初始化为N，然后递减，直到<=0，这也是递归终点，这样还少引用了一个全局变量N。
     // if (k==K && sum_==N) { // 这个条件设置的不好，这样即使k==K了，如果sum_!=N，也不会终止递归。特别的，没有搞清楚其实`k==K`才是真正的递归终点。
     if (k == K) {
         if (sum_ != N)
@@ -1239,7 +1240,7 @@ int main() {
     }
     // 统计集合个数。
     for (auto it=birds.begin(); it!=birds.end(); it++)
-        sets.insert(find(*it));
+        sets.insert(find(*it)); // 直接插入即可，std::set会自动去重。
     printf("%d %d\n", sets.size(), birds.size());
     scanf("%d", &N);
     while (N--) {

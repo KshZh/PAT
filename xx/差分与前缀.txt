@@ -41,7 +41,7 @@ int main() {
     int min_ = INT_MAX;
     bool flag = false;
     for (i=0; i<=N; i++) {
-        j = lower_bound(i, N+1, s[i]+M);
+        j = lower_bound(i, N+1, s[i]+M); // 知道前缀和数组s，可O(1)得到区间和，并且注意到，前缀和数组就是一个有序的上升序列，思维惯性：有序 => 二分查找，O(N) => O(logN)。
         if (s[j]-s[i] == M) {
             flag = true;
             printf("%d-%d\n", i+1, j);

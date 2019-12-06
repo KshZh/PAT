@@ -309,6 +309,7 @@ int main() {
     for (i=1; i<=M; i++) { // 枚举前i个物品，
         for (j=w[i]; j<=T; j++) { // 枚举最大承重j，从w[i]开始，即至少要装得下物品i。
             dp[i][j] = max(dp[i-1][j-w[i]]+v[i], dp[i-1][j]); // 选或不选物品i，看谁能够构造出更大的价值。
+			// dp[i][j] = max(dp[i][j-w[i]]+v[i], dp[i-1][j]); // 完全背包问题。
         }
     }
     printf("%d\n", dp[M][T]);

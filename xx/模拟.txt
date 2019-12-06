@@ -88,7 +88,7 @@ struct Customer {
 };
 
 // The customers are numbered from 1 to K.
-Customer cus[1001];
+Customer cus[1001]; // 真正的信息存储。
 Window win[20];
 
 // .bs节，默认初始化，类类型的默认初始化是调用默认ctor。
@@ -234,7 +234,7 @@ int main() {
                 vipid = findnextvip(vipid);
                 i++;
             } else {
-				// 否则，优先查看队列中下一个最早到达的vip，如果其在桌子可用前就到达了，就给他。
+				// 否则，优先查看队列中下一个最早到达的vip，**如果其在桌子可用前就到达了**，就给他。
                 if(vipid < player.size() && player[vipid].arrive <= table[index].end) {
                     alloctable(vipid, index);
                     vipid = findnextvip(vipid);
@@ -258,7 +258,7 @@ int main() {
                         vipindex = j;
                     }
                 }
-				// 如果该vip到达时已有一张vip桌子可用，那就把这张vip桌子分配给当前轮到的这位vip，而那张普通桌子则先不用（**即先不递增其end成员**）
+				// 如果**该vip到达时**已有一张vip桌子可用，那就把这张vip桌子分配给当前轮到的这位vip，而那张普通桌子则先不用（**即先不递增其end成员**）
                 if(player[i].arrive >= table[vipindex].end) {
                     alloctable(i, vipindex);
                     vipid = findnextvip(vipid);

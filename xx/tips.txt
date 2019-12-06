@@ -143,7 +143,7 @@ int main(int argc, char**argv) {
 测试过不了，也有可能是类型的大小不足以存储结果，比如两个int/float相乘/相加，可能溢出。
 
 
-别忘了设置递归终点。
+别忘了设置递归终点，不然会无限递归。
 
 测试算法对边界是否正常工作，最简单的如输入的数据的上界和下界，如-1000, 1000, 0等。
 
@@ -165,7 +165,7 @@ int main(int argc, char**argv) {
 
 注意关注题目给出的数据的范围，如果数据量比较小，就大胆去写，多层循环也没关系。
 
-为了避免遍历，而需要O(1)/O(logn)存取，则可以用一个数组/map/set。
+为了避免遍历，而需要O(1)/O(logN)存取，则可以用一个数组/map/set。
 
 遍历树的先序序列，相当于先序遍历树。遍历中序序列和后序序列同理，这是一个很重要又容易忽略的想法。
 
@@ -264,8 +264,12 @@ map<string, int> idx; // 编码时普遍使用下标/索引/指针，这里建�
 注意，即使提前就能判断不是汉密尔顿回路，也要接受剩下的输入，不然下一次循环就乱套了。
 
 汉密尔顿回路必须：
-……
-6. 连接结点的边必须存在。（这个容易忽略）
+// 1. 头尾相同。
+// 2. 遍历所有结点。
+// 3. 所有结点被访问一次且仅一次。
+// 4. 哈密尔顿回路的结点数比图中结点数多一个，这个结点就是起始结点也是终止结点。
+// 5. 利用set的去重功能，判定所有结点都被访问一次且仅一次。
+// 6. 连接结点的边必须存在。（这个容易忽略）
 
 // 这里有一个情况是输入的图不连通，那肯定不存在欧拉路或欧拉回路。
 // 注意，单纯判断是否存在度为0的结点无法判断图是否不连通，因为可能一个图存在两个连通分量，但确实没有度为0的结点，即每个连通分量至少有两个或两个以上互连的结点。
@@ -290,6 +294,15 @@ tolls[0]表示00:00-01:00时段打长途电话的收费，单位是cents/minute�
 做减法，注意到结果可能为负，可能要考虑减数和被减数的大小关系。
 
 O(N)，找到第一个最先可以接受服务的窗口。
+if (win[minI] > r.first) { // 要判断，不要下意识地以为，一个窗口可用了，就一定有客户在，万一窗口可用，但在该时刻还没有客户到达呢？
+	totalWaitTime += win[minI]-r.first;
+}
+if (win[minI] < r.first) {
+	win[minI] = r.first+r.second;
+} else {
+	win[minI]+=r.second;
+}
+n++;
 
 记得除以60，将单位转换为分钟。而且n不一定等于N，可能一些客户在17点后才来，这些客户不算。
 
@@ -493,7 +506,7 @@ r = binarySearch(N, left, right, n);
 if (midNum < 0 || midNum > target) right = mid - 1;
 
 判断回文数：
-2. 可以反转字符串/将反转后的digit存到vector中，循环，看两半是否相等。
+2. 可以将digit存到vector中，循环，看两半是否相等。
 3. 也可以反转到一个数字中去，然后比较两个数是否相等。但是**可能反转后会溢出**，所以尽可能还是采用上面的方法。
 
 如果数字用string存储，那么我们可以用std::reverse很容易得到该数字的逆。
@@ -644,7 +657,7 @@ TreeNode* createHuffmanTree() {
     return deleteMin();
 }
 
-priority_queue<TreeNode*, vector<TreeNode*>, decltype(cmp)> q(cmp);
+priority_queue<TreeNode*, vector<TreeNode*>, decltype(cmp)> q(cmp); // 第一个类型实参是元素类型，第二个类型实参是底层容器类型，第三个类型实参是比较函数的类型。
 
 用一维数组压缩存储无向图的邻接矩阵，那么第ij个顶点的下标是i*(i-1)/2 + j，ij均从0开始。（三角形面积加j）
 
@@ -808,3 +821,597 @@ if (!visited[j] && edge[v][j]) { // 不在已确定最短路径集合中，且�
 调整运算次序，有效防止溢出。
 x*x<y => x<y/x
 (x+y)/2 => x+(y-x)/2
+
+if (!visited[i] && edges[i][v]!=0) {
+	if (dis[v]+edges[v][i] < dis[i]) {
+		dis[i] = dis[v]+edges[v][i];
+		pre[i].clear();
+		pre[i].push_back(v);
+	} else if (dis[v]+edges[v][i] == dis[i]) {
+		pre[i].push_back(v);
+	}
+}
+
+for (; i>=1; i--) {
+	if (sum_+powerP[i] <= N) {
+		temp[k] = i; // XXX 可以用“在相同位置覆盖”代替“插入后删除”。
+		// temp.push_back(i);
+		dfs(i, k+1, sum_+powerP[i], factorsSum+i); // 这里传入的i不需要更新，因为下一个递归也可以选或不选“因子”powerP[i]。同一个powerP[i]可以被选用多次。
+		// temp.pop_back();
+	}
+}
+
+sets.insert(find(*it)); // 直接插入即可，std::set会自动去重。
+
+双指针，两边往中间，中间往两边，
+同一方向，快慢指针。
+
+if (v == dst) {
+	if (path.size()<shortestLen || (path.size()==shortestLen && getTransfer()<minTransfer)) {
+		shortest = path;
+		shortestLen = shortest.size();
+		minTransfer = getTransfer(); // 主权更新了，那么次权也要更新，不管次权是否会变得更优。
+	}
+	return;
+}
+
+// scanf("%d", &vertexSet[i]);
+// 不顺序存储结点ID，而以结点ID作为下标，值为1表示该结点属于当前输入的结点集，0反之。
+scanf("%d", &a);
+vertexSet[a] = 1;
+
+1. 因为题目保证一个人只有一个性别，所以只需全部存储为正数即可。
+2. 不用bfs了，直接双层循环更简便。
+
+void dfs(int root) {
+    path.push_back(cbt[root]);
+    if (root*2+1>N && root*2>N) {
+        paths.push_back(path);
+    }
+    if (root*2+1 <= N) // 注意要进行判断，防止数组访问越界。
+        dfs(root*2+1); // 按照题目的打印要求，先遍历右子堆。
+    if (root*2 <= N)
+        dfs(root*2);
+    path.pop_back();
+}
+
+// XXX 如果没有想到在这里先排序的话，只能先一次dfs整理出/存储所有符合条件的路径，再排序输出。
+// 这样在深度优先遍历时就能先展开权较大的路径了。
+sort(t[j].childs.begin(), t[j].childs.end(), [](int a, int b){ return t[a].weight>t[b].weight; });
+
+// 因为是对树的dfs，所以可以不用visited数组，因为树的定义保证了不会访问重复访问到同一个顶点。且是单向的图，保证不会走回头路。
+void dfs(int v) {
+    w += t[v].weight;
+    path.push_back(t[v].weight);
+
+    // 从根到达叶子结点的路径，且路径上的点权和为target。
+    if (t[v].childs.empty() && w==target) {
+        printf("%d", path[0]);
+        for (int i=1; i<path.size(); i++)
+            printf(" %d", path[i]);
+        printf("\n");
+    }
+    if (w < target) {
+        for (int x: t[v].childs)
+            dfs(x);
+    }
+
+    path.pop_back();
+    w -= t[v].weight;
+}
+
+// 下标从1开始。
+sort(v.begin()+1, v.end()); // 注意不要写成`sort(v.begin(), v.end());`。
+
+// cbt的数组存储就是逐层存储的。
+
+1. 用float可能不够，测试失败可能就是因为这个，可以考虑用double。
+2. 根据题目描述，这是一棵树，所以bfs不需要visited数组。
+3. 注意r是百分数，要转换为小数。
+
+1. 这里并不需要真的去反转二叉树，只需要在遍历输出的时候，把遍历的方向调换一下即可。
+2. 按字符输入，记得吃掉空格和\n等不相干的字符。
+3. 如果要反转的话，用先序遍历函数，函数要返回当前结点的指针，以便更新父结点的左右孩子指针。
+4. 由于递归分支不是同时展开的，所以需要先保存被覆盖的变量。
+
+// for (i=1; i<=N && cbst[i]!=0; i++) // 0是合法值，结点从0开始编号。
+for (i=1; i<=N && cbst[i]!=-1; i++)
+	;
+	
+int rightLen = len - leftLen - 1; // 记得减一减去当前根，不然就错了。
+
+层序遍历，每一层，轮流顺序输出和逆序输出，顺序输出直接打印，逆序输出先入栈，后打印。
+
+// 遍历先序序列相当于对二叉搜索树进行先序遍历。我们不必先根据输入的先序序列在内存中建树，然后先序遍历这棵树。
+for (i=0; i<N; i++) {
+	a = pre[i];
+	if ((x<a&&y>=a) || (x>=a&&y<a) || (x==a) || (y==a))
+		break;
+}
+
+bool isMaxHeap() {
+    // 从最后一个父结点是否满足堆的性质，然后递推到根。（而不是从根往下递推，这很复杂，注意换个思维，换个方向）
+    for (int i=N/2; i>=1; i--) {
+        if (i*2<=N && cbt[i*2]>cbt[i])
+            return false;
+        if (i*2+1<=N && cbt[i*2+1]>cbt[i])
+            return false;
+    }
+    return true;
+}
+
+void postorderTraversal(int root) {
+    if (root > N)
+        return;
+    postorderTraversal(root*2);
+    postorderTraversal(root*2+1);
+    postorder.push_back(cbt[root]); // 也可以用一个全局标记，控制打印格式，从而边遍历边打印，就不用暂存结果然后再打印了。
+}
+
+node* lca(node* root,int x1,int x2){
+    if(root==NULL)return NULL;
+    if(root->data==x1 || root->data==x2) return root;
+    node* left = lca(root->left,x1,x2); // 往该根的两个子树搜索。
+    node* right = lca(root->right,x1,x2);
+    if(left && right) return root;
+    else if(left==NULL) return right; // right可能也是NULL。
+    else return left;
+}
+
+// 中序序列（左根右）的特点，根的左子树的结点的下标小于根，右子树的结点的下标大于根。由此，通过比较下标，可以很容易确定a是否是u和v的最近公共祖先。
+// 题目还给出了先序序列（根左右），刚好，我们**遍历先序序列就相当于先序遍历树**，我们从根开始往下搜索，不满足时自动逐步缩小搜索范围。
+idxu = idxInInorder[u];
+idxv = idxInInorder[v];
+for (i=0; i<N; i++) {
+	idxa = idxInInorder[pre[i]];
+	if ((idxu<idxa&&idxv>idxa) || (idxu>idxa&&idxv<idxa)) {
+		printf("LCA of %d and %d is %d.\n", u, v, pre[i]);
+		break;
+	} else if (idxu == idxa) {
+		printf("%d is an ancestor of %d.\n", u, v);
+		break;
+	} else if (idxv == idxa) {
+		printf("%d is an ancestor of %d.\n", v, u);
+		break;
+	}
+}
+
+1. 因为题目只需要输出最小值和最大值，这些时间信息在输入时用完就不会再用到了，所以不需要存储。
+
+1. 通过对给出的样例输入求平均值，知道对平均值采用四舍五入。加0.5就可以四舍五入了。
+
+// 依次按不同字段排序，并标记好rank。
+for (i=0; i<4; i++) {
+	sort(ss, ss+N, [i](const Student &s1, const Student &s2){ return s1.grade[i] > s2.grade[i]; });
+	
+5. 打印时，头和尾是总是打印还是有条件地打印？
+// XXX 注意如果没有合法的记录，不打印下面这一句。
+if (flag)
+	printf("Total amount: $%0.2f\n", totalCharge);
+
+// 在这种情况下，用循环模拟时间的流动进行处理会简单很多。
+void pay(int d1, int h1, int m1, int d2, int h2, int m2, int &elapsed, float &charge)  //计算价格函数
+{
+    int time = 0;
+    double money = 0;
+    while (d1 != d2 || h1 != h2 || m1 != m2) {
+        time++;
+        m1++;
+        money += tolls[h1];
+        if (m1 == 60) {
+            m1 = 0;
+            h1++;
+        }
+        if (h1 == 24) {
+            h1 = 0;
+            d1++;
+        }
+    }
+    elapsed = time;
+    charge = money/100;
+    // printf("%d $%.2f\n", time, money / 100);
+}
+
+1. 计算平均值，如果结果错了，不要只是检查被除数，还要看看除数是否计算正确。
+2. 做减法，注意到结果可能为负，可能要考虑减数和被减数的大小关系。
+3. 加减乘除，操作数的单位要一致！比如时间单位要一致。
+
+sort(input, input+N, cmp1);
+// 先筛选，挑选出有效的记录，即配对的记录，若有四条记录i1, i2, o1, o2，则选择i2, o1为有效记录，它们相邻。
+for (i=1; i<N; i++) {
+	if (input[i].plateNO==input[i-1].plateNO && input[i-1].in==true && input[i].in==false) { // 一进一出。
+		valid[nValid++] = input[i-1];
+		valid[nValid++] = input[i];
+		howLong[input[i].plateNO] += input[i].time-input[i-1].time;
+		maxTime = max(maxTime, howLong[input[i].plateNO]);
+		i++;
+	}
+}
+
+1. 第二份是大佬的代码，没有作预处理，在查询时，直接遍历。
+3. 遇到预处理比较难做的，要不就干脆在查询时遍历吧。
+
+for (i=0; i<s.size()-1; i++) {
+	if (s[i] == 'P')
+		p[i+1] = p[i]+1;
+	else
+		p[i+1] = p[i];
+}
+for (i=s.size()-1; i>0; i--) {
+	if (s[i] == 'T')
+		t[i-1] = t[i]+1;
+	else
+		t[i-1] = t[i];
+}
+
+2. set自动去重加排序，当类型为自定义结构体时，结构体就要实现<运算符，这样set才知道怎么帮我们的结构体对象排序。
+3. set的有序是在插入时维护的，set用红黑树实现，插入的时间复杂度是O(logN)，比排序函数一般的O(NlogN)小。删除、查找的时间复杂度也是O(logN)，删除单个元素的时间复杂度是O(1)。
+4. 如果用vector+sort，就会超时。
+if ((it=s.find(Node(x, frequence[x]))) != s.end()) // 因为无法对set中的元素赋值，所以只好先删除，再插入更新过的对象。
+	s.erase(it);
+frequence[x]++;
+s.insert(Node(x, frequence[x]));
+
+// 作为字符串输入，处理起来方便许多，比如能够马上知道数字的位数而不必遍历一次。
+
+1. 可以有多种枚举策略，比如枚举两个说谎的人或枚举两个狼人，题目要求输出两个狼人，所以就枚举两个狼人。枚举两个说谎的人之后还要去找两个狼人，比较麻烦。
+
+for (i=0; i<3; i++) { // 对每一场比赛，
+
+4. 注意题目给出的敏感数据，如N*M。
+int main() {
+    // N个窗口，黄线内一个窗口前可排M个客户，总共会有K个客户，有Q个查询，查询某个客户的事务在何时处理完。
+    int N, M, K, Q, i, j, k, x, y;
+    scanf("%d %d %d %d", &N, &M, &K, &Q);
+    for (i=1; i<=K; i++) {
+        scanf("%d", &cus[i].takes_);
+    }
+    // XXX 前M*N个客户直接入队，它们直接会进入最短的队列。
+    // 注意客户数K可能小于M*N。
+    for (i=1, j=0; i<=M*N && i<=K; i++, j=(j+1)%N) { // 取模循环遍历窗口。
+        cus[i].start_ = win[j].time_;
+        cus[i].end_ = cus[i].start_ + cus[i].takes_;
+        win[j].time_ = cus[i].end_; // 更新窗口的完成时间。
+        win[j].q_.push(i);
+    }
+    // XXX 后面的客户进入最早有空的队列，这只看每个窗口第一个正在处理的客户的结束时间。
+    for (; i<=K; i++) {
+        // 找到最先有空位的队列。
+        y = INT_MAX;
+        for (j=0; j<N; j++) {
+            x = win[j].q_.front();
+            if (cus[x].end_ < y) {
+                k = j;
+                y = cus[x].end_;
+            }
+        }
+        cus[i].start_ = win[k].time_;
+        cus[i].end_ = cus[i].start_ + cus[i].takes_;
+        win[k].time_ = cus[i].end_;
+        win[k].q_.pop();
+        win[k].q_.push(i);
+    }
+    // N个队列中的元素丢掉即可，因为我们已经在push时处理得到想要的信息了。
+    for (i=0; i<Q; i++) {
+        scanf("%d", &x);
+        // for those customers who cannot be served before 17:00, you must output Sorry instead.
+        if (cus[x].start_ >= 17*60) {
+            printf("Sorry\n");
+        } else {
+            printf("%02d:%02d\n", cus[x].end_/60, cus[x].end_%60);
+        }
+    }
+}
+
+1. 对于一个player数组，其中有一些是vip，有一些不是，那么我们可以用**双指针**，一个指针遍历非vip，一个指针遍历vip。
+4. 时间一般不要小时、分钟等分别存储，而是换算成秒数或分钟数，只用一个成员存储。然后在输出时再换算回来。
+sort(player.begin(), player.end(), cmp1); // 按照到达时间升序排序。
+int i = 0, vipid = -1;
+vipid = findnextvip(vipid);
+while(i < player.size()) {
+	// XXX 找到一个最早可以接受服务的桌子。
+	// 不要惧怕每次循环都要O(N)会超时，先把程序跑起来。
+	int index = -1, minendtime = 999999999;
+	for(int j = 1; j <= k; j++) {
+		if(table[j].end < minendtime) {
+			minendtime = table[j].end;
+			index = j;
+		}
+	}
+	if(table[index].end >= 21 * 3600) break;
+	if(player[i].vip == true && i < vipid) {
+		i++; // 双指针，该vip已经先服务过了，遍历下一个player。
+		continue;
+	}
+	if(table[index].vip == true) { // 有vip桌子。
+		if(player[i].vip == true) { // 如果当前player就是vip，给它。
+			alloctable(i, index);
+			vipid = findnextvip(vipid);
+			i++;
+		} else {
+			// 否则，优先查看队列中下一个最早到达的vip，**如果其在桌子可用前就到达了**，就给他。
+			if(vipid < player.size() && player[vipid].arrive <= table[index].end) {
+				alloctable(vipid, index);
+				vipid = findnextvip(vipid);
+			} else {
+			// 否则，先给普通的player使用。
+				alloctable(i, index);
+				i++;
+			}
+		}
+	} else { // 有普通的桌子。
+		if(player[i].vip == false) { // 普通player。
+			alloctable(i, index);
+			i++;
+		} else {
+			// 当前轮到的这位是vip，vip**尽量**使用vip桌子。
+			// 找到一张最早可用的vip桌子。
+			int vipindex = -1, minvipendtime = 999999999;
+			for(int j = 1; j <= k; j++) {
+				if(table[j].vip == true && table[j].end < minvipendtime) {
+					minvipendtime = table[j].end;
+					vipindex = j;
+				}
+			}
+			// 如果**该vip到达时**已有一张vip桌子可用，那就把这张vip桌子分配给当前轮到的这位vip，而那张普通桌子则先不用（**即先不递增其end成员**）
+			if(player[i].arrive >= table[vipindex].end) {
+				alloctable(i, vipindex);
+				vipid = findnextvip(vipid);
+				i++;
+			} else {
+			// 否则，把普通桌子分配给vip。
+				alloctable(i, index);
+				vipid = findnextvip(vipid);
+				i++;
+			}
+		}
+	}
+}
+
+for (j=1; j<55; j++) {
+	// 奇次数和偶次数，循环轮流使用s和s1。
+	if (i%2 == 0)
+		s1[a[j]] = s[j];
+	else
+		s[a[j]] = s1[j];
+}
+
+// 由于使用淘汰制，所以比赛流程图是一层一层的，所以这里逐层处理。
+for (level=1; level<1000 && n!=1; level++) {
+	k = 0;
+	for (i=0; i<n; i+=NG) {
+		// 考察一组NG个player中的胜者。
+		max_ = -1;
+		for (j=i; j<i+NG && j<n; j++) { // 注意这里的判断`j<i+NG && j<n`，防止数组访问越界。
+			players[order[j]].level = level; // 给在该层比赛的player赋予该层的level，晋级者会在下一个level再被赋予一个更高的level。
+			if (players[order[j]].weight > max_) {
+				max_ = players[order[j]].weight;
+				maxI_ = j;
+			}
+		}
+		// 双指针，使用同一个数组插入，由于消耗比插入快，所以可以保证不会覆盖未被使用到的信息。
+		order[k++] = order[maxI_]; // 晋级的player的id。
+	}
+	n = k; // 新一轮比赛的人数。
+}
+
+// 先分类，首先将有效的结点放前面，无效的结点放后面，然后有效结点和无效结点内部分别按key排序。
+auto cmp = [](const Node& a, const Node& b){ return a.valid!=b.valid? a.valid>b.valid: a.key<b.key; };
+
+// 将三个链表首尾拼接起来，注意不要把头结点接进去。
+if (pNegative==headNegative && pInK==headInK) {
+	p = list[head].next;
+} else if (pNegative==headNegative && pInK!=headInK) {
+	list[pInK].next = list[head].next;
+	p = list[headInK].next;
+} else if (pNegative!=headNegative && pInK==headInK) {
+	list[pNegative].next = list[head].next;
+	p = list[headNegative].next;
+} else {
+	list[pNegative].next = list[headInK].next;
+	list[pInK].next = list[head].next;
+	p = list[headNegative].next;
+}
+
+// 注意，如果累加后，系数为0，要更新项数。
+if (r[j+i] == 0.0)
+	m--;
+	
+/*
+flag = true;
+// 不采用这种算法，因为该算法只是判断了是否为回文数，无法产出它的逆序数，如果不是回文数，我们也需要这个逆序数。
+for (j=0; j<n/2; j++) {
+	if (N[j] != N[n-1-j])
+		flag = false;
+}
+*/
+
+由于确定转换后的结果只有两位，所以不需要用循环。直接逐语句写出。
+
+// 不是按照字典序排列就可以的，必须保证两个字符串构成的数字是最小的才行，
+// 所以cmp函数写成return a + b < b + a;的形式，保证它排列按照能够组成的最小数字的形式排列。
+auto cmp = [](const string& a, const string& b){ return a+b<b+a; }; // 调用了std::string的比较操作符。
+
+// while (result.size()!=0 && result[0]=='0') // 跳过前导零。可能不止一个零，所以要用循环。
+//    result.erase(result.begin()); // 用erase()删除指定位置的元素。
+if ((i=result.find_first_not_of("0")) != 0) {
+	result.erase(0, i);
+}
+
+对于now，有三种情况：
+1.now == 0 : 那么 ans += left * a; // 因为now==0说明now位只有在left从0~left-1的时候会产生1，所以会产生left次，now每一次出现1，右边会重复从0~999…出现a次（如a=10，则0, 1, 2, 3, 4, 5, 6, 7, 8, 9共10次，10次now为1）
+2.now == 1 : ans += left * a + right + 1;// now = 1的时候就要比上一步多加一个当now为1的时候右边出现0~right共right+1个数导致的now为1的次数。
+3.now >= 2 : ans += (left + 1) * a;// now大于等于2就左边0~left的时候会在now位置产生1，所以会产生left+1次，右边会重复从0~999…出现a次（第a次重复到999…后会进位使得now变为2）
+
+// 获得x的升序数和降序数。
+pair<int, int> getNum(int x) {
+    pair<int, int> p{0, 0};
+    for (i=0; i<4; i++, x/=10) // 这里并没有使当x为0时退出，而是填满4个数字，若x为0，则填充0。
+        digits[i] = x%10;
+    sort(digits, digits+4, cmp2);
+    for (i=0; i<4; i++)
+        p.first = p.first*10 + digits[i];
+    // sort(digits, digits+4, cmp1); // XXX 排一次就够了，然后循环顺序遍历，或逆序遍历。
+    for (i=3; i>=0; i--)
+        p.second = p.second*10 + digits[i];
+    return p;
+}
+
+sort(a, a+N); // 先将无序序列排序成有序升序序列。
+// m确定了，根据M<=p*m，那么M的最大值也就确定了。
+for (i=0; i<N; i++) {
+// 遍历m，找到M，即找到最后一个小于等于p*m的数，
+// 也就是找到第一个大于p*m的数，upper_bound()，然后该数前面的那个数就是我们要找的。
+	M = (long)p*a[i];
+	l = i;
+	r = N; // 查找区间是[l, r)。
+	while (l < r) {
+		mid = (l+r)/2;
+		if (a[mid] > M)
+			r = mid; // 暂存结果，但或许不是第一个，缩小范围继续找，找到第一个。
+		else
+			l = mid+1;
+	}
+	maxLen = max(maxLen, r-i); // 右开减左闭等于区间长度。
+}
+
+3. 最多一千位，但相加最高位可能进位，本来似乎分配1001位就可以了，但是不行，因为可能一个1001位的结果仍不是回文数，需要再做加法，最高位再次进位，故要分配多一些。
+
+c = a + b;
+d = c>0?c:-c;
+if (d < 1000)
+	printf("%d\n", c);
+else if (d < 1000000)
+	// 只有最高的三位要带符号，后面的三位组不用带符号。
+	printf("%d,%03d\n", c/1000, d%1000); // %1000得到的必然是小于1000的数。
+else if (d >= 1000000)
+	printf("%d,%03d,%03d\n", c/1000000, (d/1000)%1000, d%1000);
+	
+1. 注意找到第一个有效数字的方法，`s.find_first_not_of("0.")`，其中关于find_first_not_of()的行为的描述是：Finds the first character equal to none of characters in str.
+2. 注意小数点可能在第一个有效数字前面，也可能在第一个有效数字后面。
+3. .002中的0不是有效数字，.303中的0就是有效数字。
+4. 格式化的要点是获取尾数（准确是N位有效数字）和获取指数。
+
+// 每4位一组，组内包含千、百、十。组外包含亿、万。
+// 第一个组内，前导零不用读出来，其它组内的前导零要读出来。然后，零后面跟的都是零，那么也不用读出来，否则要读出来。
+
+void init() {
+    for (int i=0; i<13; i++) {
+        m[zero[i]] = i;
+        m[one[i]] = i*13; // 1*13, 2*13, ..., 12*13。
+    }
+    // 排列组合，先把表做好，后面可以直接查表。
+    for (int i=0; i<13; i++) {
+        for (int j=0; j<13; j++)
+            m[one[i] + " " + zero[j]] = i*13+j;
+    }
+}
+
+#include <cstdio>
+#include <cmath>
+#include <cstring>
+#include <algorithm>
+using namespace std;
+bool cmp(int a, int b){ return a > b; }
+int main(){
+  int N, S[10010];
+  scanf("%d", &N);
+  int n = (int)sqrt(1.0 * N);
+  while(N % n != 0) n--;
+  int m = N / n;
+  int ans[m][n];
+  memset(ans,0,sizeof(ans));//用于判断是否被赋值过
+  for(int i = 0; i < N; i++) scanf("%d", &S[i]);
+  sort(S, S + N, cmp);
+  int i = 0, j = 0, k = 0;
+  ans[i][j] = S[k++];//第一个赋值
+  while(k < N){
+    while(j < n - 1 && !ans[i][j+1]) ans[i][++j] = S[k++];//从左向右
+    while(i < m - 1 && !ans[i+1][j]) ans[++i][j] = S[k++];//从上向下
+    while(j > 0 && !ans[i][j-1]) ans[i][--j] = S[k++];//从右往左
+    while(i > 0 && !ans[i-1][j]) ans[--i][j] = S[k++];//从下往上
+  }
+  for(int i = 0; i < m; i++){
+    for(int j = 0; j < n; j++){
+      if(j != 0) printf(" ");
+      printf("%d", ans[i][j]);
+    }
+    printf("\n");
+  }
+  return 0;
+}
+
+if (k&1)
+	s = a[j].name + s; // a[j].name自带了前导空格。
+else
+	s = s + a[j].name;
+	
+// 先遍历一遍，找到能够work的键。
+// 为什么选择找能work的键而不是找stucked的键呢？因为我们无法区分，"eee"，到底是故意重复了K次，还是e键是坏的，但只要有一次出现不足K次，那么这个键一定是好的。
+for (i=0; i<s.size(); i++) {
+	for (j=i+1; j<i+K && s[j-1]==s[j]; j++)
+		;
+	if (j != i+K) {
+		work[s[i]] = true;
+	} else {
+		i += (K-1); // 这里记得跳过"eee"，否则下一个循环看到"ee"，导致将e认为是能work的键。
+	}
+}
+
+// 遍历左端点。
+int min_ = INT_MAX;
+bool flag = false;
+for (i=0; i<=N; i++) {
+	j = lower_bound(i, N+1, s[i]+M); // 知道前缀和数组s，可O(1)得到区间和，并且注意到，前缀和数组就是一个有序的上升序列，思维惯性：有序 => 二分查找，O(N) => O(logN)。
+	if (s[j]-s[i] == M) {
+		flag = true;
+		printf("%d-%d\n", i+1, j);
+	} else if (s[j]-s[i]>M && s[j]-s[i] < min_) {
+		min_ = s[j]-s[i];
+	}
+}
+
+scanf("%d", &x);
+if (book[x] > 0) // 过滤不喜欢的颜色。
+	a[num++] = book[x];
+	
+int main() {
+	int i, j;
+    scanf("%d %d", &T, &M);
+    for (i=1; i<=M; i++)
+        scanf("%d %d", w+i, v+i);
+	// 边界是`dp[0][j]=0`和`dp[i][0]=0`，这已经由全局变量默认初始化完成了。
+	// 从边界开始往上推。
+    for (i=1; i<=M; i++) { // 枚举前i个物品，
+        for (j=w[i]; j<=T; j++) { // 枚举最大承重j，从w[i]开始，即至少要装得下物品i。
+            dp[i][j] = max(dp[i-1][j-w[i]]+v[i], dp[i-1][j]); // 选或不选物品i，看谁能够构造出更大的价值。
+			// dp[i][j] = max(dp[i][j-w[i]]+v[i], dp[i-1][j]); // 完全背包问题。
+        }
+    }
+    printf("%d\n", dp[M][T]);
+}
+
+void backtracing(int i, int j, bool flag) { // flag只是为了控制打印格式。
+    if (i<=0 || j<=0)
+        return;
+	// if (dp[i][j] == dp[i-1][j]) { // 错误，在这里不能唯一确定i没被选中，不知道原因。 
+    if (dp[i][j] == dp[i-1][j-w[i]]+w[i]) {
+        if (flag) {
+            printf("%d", w[i]);
+            flag = false;
+        } else
+            printf(" %d", w[i]);
+        backtracing(i-1, j-w[i], flag);
+    } else {
+        backtracing(i-1, j, flag);
+    }
+}
+
+sort(a+1, a+N+1, cmp); // 先对输入排序，
+for (i=1; i<=N; i++) { // 遍历天数，某天i的骑行路程必须大于i，
+	if (a[i] <= i)
+		break;
+}
+
+1. 两条绳子各自折半变成一条新的绳子，所以比较长的绳子应该要尽量少地被折半，这样它的贡献的长度越多，所以先使用短地绳子。
+

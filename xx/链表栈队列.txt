@@ -118,6 +118,7 @@ int N, i, head, nValid, addr;
 // XXX 一开始先以addr为下标。
 Node list[100000]; // .bss，flag默认初始化为零值。
 
+// 先分类，无效结点全部放后面。
 auto cmp = [](const Node& a, const Node& b){ return a.valid!=b.valid? a.valid>b.valid: a.key<b.key; };
 
 int main() {
