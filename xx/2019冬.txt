@@ -1,7 +1,293 @@
-第一题，格式处理，处理好各种边界情况，如分隔符可能不只一个、有前导分隔符、末尾没有分隔符等，还有一点要注意最后的输入要用getline，否则遇到空白符作为分隔符，算法就失效了。
+## 7-1 Good in C (20分)
 
-第二题，链表处理，先用blocks数组存放每个block的头结点地址，最后逆序遍历blocks数组，输出每个block，注意处理一下边界即可。
+1. 格式处理，处理好各种边界情况，如分隔符可能不只一个、有前导分隔符、末尾没有分隔符等，还有一点要注意最后的输入要用getline，否则遇到空白符作为分隔符，算法就失效了。
+2. 因为是多行的格式化输出，所以必须要用buf先构造好，直接输出很复杂。
 
-第三题，图，直接双层遍历即可。
+```cpp
+#include <iostream>
+#include <vector>
+#include <string>
+#include <cstdio>
+#include <cstring>
+using namespace std;
 
-第四题，根据输入的序列建树，输入序列是有最小堆性质的，直接每次O(N)找到子序列中最小的那个元素，该元素就是该子树的根。最后BFS输出即可。
+char alpha[7][5];
+
+vector<decltype(alpha)> a(26);
+
+char buf[7][10000];
+
+// char sentence[10000];
+string sentence;
+
+int main()
+{
+    int i, j, k;
+    FILE* f = fopen("C:/Users/acer/Desktop/213/2.txt", "r");
+    for (i=0; i<26; i++) {
+        for (j=0; j<7; j++) {
+            for (k=0; k<5; k++) {
+                // fscanf(f, "%c", &a[i][j][k]);
+                scanf("%c", &a[i][j][k]);
+            }
+            // fscanf(f, "\n");
+            scanf("\n");
+        }
+    }
+    // fscanf(f, "%s", sentence);
+    // scanf("%s", sentence);
+    getline(cin, sentence); // 最后一行可能有空白符作为分隔符，所以要用getline()。
+    int index;
+    int col;
+    int len = sentence.size();
+    i = 0;
+    // the words are separated by any characters other than capital English letters.
+    // 也就是可以不止一个分隔符。
+    while (i<len && !isupper(sentence[i]))
+        i++;
+    for (; i<len; ) {
+        col = 0;
+        for (; isupper(sentence[i]); i++) {
+            index = sentence[i]-'A';
+            for (j=0; j<7; j++) {
+                for (k=col; k<col+5; k++) {
+                    buf[j][k] = a[index][j][k-col];
+                }
+            }
+            col += 5;
+            for (j=0; j<7; j++)
+                buf[j][col] = ' ';
+            col++;
+        }
+        for (j=0; j<7; j++) {
+            for (k=0; k<col-1; k++) {
+                printf("%c", buf[j][k]);
+            }
+            printf("\n");
+        }
+        // the words are separated by any characters other than capital English letters.
+        // 也就是可以不止一个分隔符。
+        while (i<len && !isupper(sentence[i]))
+            i++;
+        if (i == len)
+            break;
+        printf("\n");
+    }
+    return 0;
+}
+```
+
+## 7-2 Block Reversing (25分)
+
+1. 链表处理，先用blocks数组存放每个block的头结点地址，最后逆序遍历blocks数组，输出每个block，注意处理一下边界即可。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <cstdio>
+using namespace std;
+
+int N, head;
+
+struct Node {
+    int addr, data, next;
+    Node(int a, int d, int n): addr(a), data(d), next(n) {}
+    Node() = default;
+};
+
+unordered_map<int, Node> list_;
+
+int main()
+{
+    // FILE* f = fopen("C:/Users/acer/Desktop/213/2.txt", "r");
+    int i, addr, data, next_, j, K;
+    vector<int> blocks;
+    // fscanf(f, "%d %d %d", &head, &N, &K);
+    scanf("%d %d %d", &head, &N, &K);
+    for (i=0; i<N; i++) {
+        // fscanf(f, "%d %d %d", &addr, &data, &next_);
+        scanf("%d %d %d", &addr, &data, &next_);
+        list_[addr] = Node(addr, data, next_);
+    }
+    int p = head;
+    int n = 0;
+    for (; p!=-1; p=list_[p].next) {
+        if (n == 0) {
+            blocks.push_back(p);
+            n = K;
+        }
+        n--;
+    }
+    for (i=blocks.size()-1; i>=0; i--) {
+        p = blocks[i];
+        for (j=0; j<K-1 && list_[p].next!=-1; j++) {
+            printf("%05d %d %05d\n", p, list_[p].data, list_[p].next);
+            p = list_[p].next;
+        }
+        // 边界放在外面处理，循环里一般执行的是通用模式。
+        if (i != 0)
+            printf("%05d %d %05d\n", p, list_[p].data, list_[blocks[i-1]].addr);
+        else
+            printf("%05d %d -1\n", p, list_[p].data);
+    }
+    return 0;
+}
+```
+
+## 7-3 Summit (25分)
+
+1. 图，直接双层遍历即可。
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <cstdio>
+using namespace std;
+
+int N, M, L, K;
+
+// 编号从1开始。
+bool edge[210][210];
+
+int a[210];
+
+vector<bool> checked(210);
+
+int main()
+{
+    FILE* f = fopen("C:/Users/acer/Desktop/213/2.txt", "r");
+    int i, j, u, v, k;
+    // fscanf(f, "%d %d", &N, &M);
+    scanf("%d %d", &N, &M);
+    for (i=0; i<M; i++) {
+        // fscanf(f, "%d %d", &u, &v);
+        scanf("%d %d", &u, &v);
+        edge[u][v] = edge[v][u] = true;
+    }
+    // fscanf(f, "%d", &K);
+    scanf("%d", &K);
+    bool flag;
+    for (i=1; i<=K; i++) {
+        fill(checked.begin(), checked.end(), false);
+        // fscanf(f, "%d", &L);
+        scanf("%d", &L);
+        for (j=0; j<L; j++) {
+            // fscanf(f, "%d", a+j);
+            scanf("%d", a+j);
+            checked[a[j]] = true;
+        }
+        flag = true;
+        for (j=0; j<L && flag; j++) {
+            for (k=j+1; k<L; k++) {
+                if (!edge[a[j]][a[k]]) {
+                    flag = false;
+                    break;
+                }
+            }
+        }
+        if (!flag) {
+            printf("Area %d needs help.\n", i);
+            continue;
+        }
+        flag = false;
+        for (j=1; j<=N; j++) {
+            if (checked[j])
+                continue;
+            for (k=0; k<L; k++) {
+                if (!edge[a[k]][j]) {
+                    break;
+                }
+            }
+            if (k == L) {
+                printf("Area %d may invite more people, such as %d.\n", i, j);
+                flag = true;
+                break;
+            }
+        }
+        if (!flag)
+            printf("Area %d is OK.\n", i);
+    }
+    return 0;
+}
+```
+
+## 7-4 Cartesian Tree (30分)
+
+1. 根据输入的序列建树，输入序列是有最小堆性质的，直接每次O(N)找到子序列中最小的那个元素，该元素就是该子树的根。最后BFS输出即可。
+2. 不能用数组按照完全二叉树那样存储建立树，因为题目给出N最大为30，如果是单链表的情况，那么需要2^30大小的数组才能存储这棵树，显然，分配不了那么大的内存空间。
+
+```cpp
+#include <iostream>
+#include <queue>
+#include <cstdio>
+using namespace std;
+
+int N;
+
+int a[50];
+
+// 不能用数组按照完全二叉树那样存储建立树，因为题目给出N最大为30，
+// 如果是单链表的情况，那么需要2^30大小的数组才能存储这棵树，显然，分配不了那么大的内存空间。
+// int cbt[40];
+
+struct Node {
+    int data;
+    Node* left;
+    Node* right;
+    Node() = default;
+    Node(int d): data(d), left(nullptr), right(nullptr) {}
+};
+
+Node* foo(int start, int tail) {
+    if (start >= tail)
+        return nullptr;
+    int i, minI=start, min_=a[start];
+    // 找到子树中最小的元素，这个元素就是该子树的根。
+    for (i=start+1; i<tail; i++) {
+        if (a[i]<min_) {
+            min_ = a[i];
+            minI = i;
+        }
+    }
+    Node* root = new Node(a[minI]);
+    root->left = foo(start, minI);
+    root->right = foo(minI+1, tail);
+    return root;
+}
+
+void bfs(Node* root) {
+    Node* p;
+    queue<Node*> q;
+    q.push(root);
+    printf("%d", root->data);
+    while (!q.empty()) {
+        p = q.front();
+        q.pop();
+        if (p->left) {
+            q.push(p->left);
+            printf(" %d", p->left->data);
+        }
+        if (p->right) {
+            q.push(p->right);
+            printf(" %d", p->right->data);
+        }
+    }
+}
+
+int main()
+{
+    // fill(cbt, cbt+100, -1);
+    int i;
+    FILE* f = fopen("C:/Users/acer/Desktop/213/2.txt", "r");
+    // fscanf(f, "%d", &N);
+    scanf("%d", &N);
+    for (i=0; i<N; i++)
+        // fscanf(f, "%d", a+i);
+        scanf("%d", a+i);
+    Node* root = foo(0, N);
+    bfs(root);
+    printf("\n");
+    return 0;
+}
+```
